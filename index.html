@@ -9,7 +9,6 @@
     <link rel="apple-touch-icon" href="favicon.png">
     
     <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
 <body>
 
@@ -24,10 +23,10 @@
             </div>
             <div class="modal-buttons">
                 <div class="row-btns">
-                    <button class="modal-btn btn-primary" onclick="createRoom()">Crear Sala</button>
-                    <button class="modal-btn btn-secondary" onclick="showJoinModal()">Unirse</button>
+                    <button class="modal-btn btn-primary" onclick="window.createRoom()">Crear Sala</button>
+                    <button class="modal-btn btn-secondary" onclick="window.showJoinModal()">Unirse</button>
                 </div>
-                <button class="modal-btn btn-outline" onclick="playSolo()" style="margin-top: 10px;">Jugar Solo (Local)</button>
+                <button class="modal-btn btn-outline" onclick="window.playSolo()" style="margin-top: 10px;">Jugar Solo (Local)</button>
             </div>
         </div>
     </div>
@@ -42,8 +41,8 @@
                 <input type="text" id="roomCodeInput" placeholder="ABCD" maxlength="4" style="text-transform: uppercase;">
             </div>
             <div class="modal-buttons row-btns">
-                <button class="modal-btn btn-outline" onclick="backToLobby()">Volver</button>
-                <button class="modal-btn btn-secondary" onclick="joinRoom()">Entrar</button>
+                <button class="modal-btn btn-outline" onclick="window.backToLobby()">Volver</button>
+                <button class="modal-btn btn-secondary" onclick="window.joinRoom()">Entrar</button>
             </div>
         </div>
     </div>
@@ -59,7 +58,7 @@
     <div id="zoomModal" class="modal-overlay" style="display: none; z-index: 3000;">
         <div class="modal-box" style="max-width: 520px; background: rgba(0,0,0,0.95);">
             <div style="text-align: right; margin-bottom: 10px;">
-                <button onclick="cerrarZoom()" style="background: transparent; border: none; color: white; font-size: 2rem; cursor: pointer; padding: 0 10px;">✕</button>
+                <button onclick="window.cerrarZoom()" style="background: transparent; border: none; color: white; font-size: 2rem; cursor: pointer; padding: 0 10px;">✕</button>
             </div>
             <div id="zoomContent" style="display: flex; gap: 20px; justify-content: center; align-items: center; min-height: 200px; flex-wrap: wrap;">
                 <!-- Carta ampliada -->
@@ -108,7 +107,7 @@
                         <span id="mazo-especial-count">9</span>
                     </div>
                 </div>
-                <button class="modal-btn btn-primary btn-repartir" onclick="repartirCartas()">Repartir Cartas</button>
+                <button class="modal-btn btn-primary btn-repartir" onclick="window.repartirCartas()">Repartir Cartas</button>
             </div>
         </div>
 
@@ -142,13 +141,13 @@
                 </div>
                 
                 <div class="controls">
-                    <button class="modal-btn btn-outline" onclick="reiniciarTablero()">Reiniciar</button>
+                    <button class="modal-btn btn-outline" onclick="window.reiniciarTablero()">Reiniciar</button>
                 </div>
             </div>
 
             <!-- Jugadores (plegable) -->
             <div class="leaderboard" id="leaderboardPanel">
-                <div class="leaderboard-header" onclick="toggleLeaderboard()">
+                <div class="leaderboard-header" onclick="window.toggleLeaderboard()">
                     <h3>🏆 Jugadores</h3>
                     <span id="toggleIcon">▲</span>
                 </div>
@@ -159,6 +158,10 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- MQTT CLIENT -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    
+    <!-- MÓDULOS JS -->
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
