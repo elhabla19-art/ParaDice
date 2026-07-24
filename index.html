@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ParaDice</title>
+    
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="favicon.png">
+    
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+
+    <!-- LOBBY PRINCIPAL -->
+    <div id="lobbyModal" class="modal-overlay">
+        <div class="modal-box">
+            <h2>🎲 ParaDice</h2>
+            <p>Selecciona un modo de juego</p>
+            <div class="input-group">
+                <label>Tu Nombre:</label>
+                <input type="text" id="playerName" placeholder="Ej. Leo" maxlength="10">
+            </div>
+            <div class="modal-buttons">
+                <div class="row-btns">
+                    <button class="modal-btn btn-primary" onclick="createRoom()">Crear Sala</button>
+                    <button class="modal-btn btn-secondary" onclick="showJoinModal()">Unirse</button>
+                </div>
+                <button class="modal-btn btn-outline" onclick="playSolo()" style="margin-top: 10px;">Jugar Solo (Local)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- UNIRSE A SALA -->
+    <div id="joinModal" class="modal-overlay">
+        <div class="modal-box">
+            <h2>Unirse a Sala</h2>
+            <p>Pide el codigo al creador de la sala</p>
+            <div class="input-group">
+                <label>Codigo de la Sala (4 letras/numeros):</label>
+                <input type="text" id="roomCodeInput" placeholder="ABCD" maxlength="4" style="text-transform: uppercase;">
+            </div>
+            <div class="modal-buttons row-btns">
+                <button class="modal-btn btn-outline" onclick="backToLobby()">Volver</button>
+                <button class="modal-btn btn-secondary" onclick="joinRoom()">Entrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CARGANDO -->
+    <div id="loadingModal" class="modal-overlay">
+        <div class="modal-box" style="background: transparent; border: none; box-shadow: none;">
+            <h2 id="loadingText">Conectando...</h2>
+        </div>
+    </div>
+
+    <!-- ZOOM DE CARTA -->
+    <div id="zoomModal" class="modal-overlay" style="display: none; z-index: 3000;">
+        <div class="modal-box" style="max-width: 520px; background: rgba(0,0,0,0.95);">
+            <div style="text-align: right; margin-bottom: 10px;">
+                <button onclick="cerrarZoom()" style="background: transparent; border: none; color: white; font-size: 2rem; cursor: pointer; padding: 0 10px;">✕</button>
+            </div>
+            <div id="zoomContent" style="display: flex; gap: 20px; justify-content: center; align-items: center; min-height: 200px; flex-wrap: wrap;">
+                <!-- Carta ampliada -->
+                <div style="flex: 0 0 auto;">
+                    <img id="zoomImage" src="" alt="Carta ampliada" style="max-width: 180px; max-height: 250px; border-radius: 8px; display: block;">
+                </div>
+                <!-- Casillas verticales -->
+                <div id="zoomCasillas" style="display: flex; flex-direction: column; gap: 8px; min-width: 50px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); align-items: center;">
+                    <!-- Se generan dinámicamente -->
+                </div>
+            </div>
+            <div id="zoomText" style="text-align: center; color: #aaa; margin-top: 10px; font-size: 0.9rem;"></div>
+            <div id="zoomAcciones" style="margin-top: 10px; text-align: center;"></div>
+        </div>
+    </div>
+
+    <!-- UI DEL JUEGO -->
+    <header>
+        <h1>🎲 ParaDice</h1>
+        <div id="roomInfoDisplay" class="room-info" style="display: none;"></div>
+    </header>
+
+    <div class="app-container">
+        <div class="game-layout">
+            <!-- Almacen (Tablero) -->
+            <div class="board-container">
+                <div class="board" id="game-board"></div>
+            </div>
+
+            <!-- Cartas visibles en columna -->
+            <div class="cartas-columna">
+                <div class="cartas-label">Cartas Visibles</div>
+                <div id="cartas-visibles-container">
+                    <div class="carta-visible vacia" data-index="0">Vacío</div>
+                    <div class="carta-visible vacia" data-index="1">Vacío</div>
+                    <div class="carta-visible vacia" data-index="2">Vacío</div>
+                    <div class="carta-visible vacia" data-index="3">Vacío</div>
+                </div>
+                <div class="mazos-info">
+                    <div class="mazo-info">
+                        <span>Mazo Colores</span>
+                        <span id="mazo-colores-count">45</span>
+                    </div>
+                    <div class="mazo-info">
+                        <span>Mazo Especial</span>
+                        <span id="mazo-especial-count">9</span>
+                    </div>
+                </div>
+                <button class="modal-btn btn-primary btn-repartir" onclick="repartirCartas()">Repartir Cartas</button>
+            </div>
+        </div>
+
+        <!-- Area de Cartas del Jugador -->
+        <div class="jugador-cartas-container">
+            <div class="jugador-cartas-label">Tus Cartas</div>
+            <div id="jugador-cartas-container">
+                <div class="carta-jugador vacia" data-index="0">Vacío</div>
+                <div class="carta-jugador vacia" data-index="1">Vacío</div>
+                <div class="carta-jugador vacia" data-index="2">Vacío</div>
+                <div class="carta-jugador vacia" data-index="3">Vacío</div>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <!-- Estado del juego -->
+            <div class="status-panel">
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span class="status-label">Marcadas</span>
+                        <span id="marcadas-count">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Puntaje</span>
+                        <span id="score-total">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Estado</span>
+                        <span id="estado-juego">Esperando</span>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button class="modal-btn btn-outline" onclick="reiniciarTablero()">Reiniciar</button>
+                </div>
+            </div>
+
+            <!-- Jugadores (plegable) -->
+            <div class="leaderboard" id="leaderboardPanel">
+                <div class="leaderboard-header" onclick="toggleLeaderboard()">
+                    <h3>🏆 Jugadores</h3>
+                    <span id="toggleIcon">▲</span>
+                </div>
+                <div id="leaderboardContent" class="leaderboard-content">
+                    <div id="playersList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
