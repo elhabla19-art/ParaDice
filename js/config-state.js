@@ -21,6 +21,15 @@ export const COLORES_HEX = {
     rosa: '#f06292'
 };
 
+// Puntajes por carta [número de carta] = puntaje
+export const PUNTAJES = {
+    celeste: [15, 15, 10, 15, 20, 20, 20, 10, 20],
+    lima: [20, 10, 15, 20, 10, 10, 20, 15, 15],
+    naranja: [15, 15, 10, 10, 20, 20, 20, 15, 10],
+    purpura: [10, 20, 15, 20, 20, 15, 10, 15, 10],
+    rosa: [15, 15, 10, 10, 10, 20, 20, 15, 20]
+};
+
 // Estado del juego
 export const state = {
     // Estado local
@@ -33,7 +42,12 @@ export const state = {
     almacen: {},
     cartasRepartidas: false,
     cartaSeleccionada: null,
+    
+    // Tablero: cada color tiene una ficha en una posición (0-5)
+    fichas: {},
     tableroGlobal: {},
+    
+    // Progreso de cartas
     progresoCarta: {},
     zoomModo: 'jugador',
     
@@ -45,13 +59,12 @@ export const state = {
     myName: 'Jugador'
 };
 
-// Inicializar almacen y tablero
+// Inicializar estado
 export function initState() {
     COLORES.forEach(color => {
         state.almacen[color] = Array(6).fill(null);
-        if (!state.tableroGlobal[color]) {
-            state.tableroGlobal[color] = Array(6).fill(false);
-        }
+        state.tableroGlobal[color] = Array(6).fill(false);
+        state.fichas[color] = 0; // Empieza en casilla 1 (índice 0)
     });
     state.progresoCarta = {};
 }

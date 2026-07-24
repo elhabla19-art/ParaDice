@@ -4,9 +4,9 @@
 
 import { state } from './config-state.js';
 import { getColorName } from './utils.js';
-import { completarCarta, agregarCartaAJugador } from './juego.js';
+import { completarCarta, agregarCartaAJugador, getPuntajeCarta } from './juego.js';
 
-// ----- ZOOM PARA CARTAS VISIBLES -----
+// ZOOM PARA CARTAS VISIBLES
 export function abrirZoomVisible(carta, indexVisible) {
     const modal = document.getElementById('zoomModal');
     const img = document.getElementById('zoomImage');
@@ -26,7 +26,8 @@ export function abrirZoomVisible(carta, indexVisible) {
     };
     img.style.display = 'block';
     
-    text.textContent = `${carta.color ? getColorName(carta.color) : 'Especial'} - Número ${carta.numero || ''}`;
+    const puntaje = getPuntajeCarta(carta);
+    text.textContent = `${carta.color ? getColorName(carta.color) : 'Especial'} - Número ${carta.numero || ''} (${puntaje} pts)`;
     
     casillasContainer.innerHTML = '';
     
@@ -50,6 +51,18 @@ export function abrirZoomVisible(carta, indexVisible) {
         `;
         casillasContainer.appendChild(casillaDiv);
     }
+    
+    // Mostrar puntaje
+    const puntajeDiv = document.createElement('div');
+    puntajeDiv.textContent = `⭐ ${puntaje} pts`;
+    puntajeDiv.style.cssText = `
+        color: #ffd700;
+        font-size: 0.8rem;
+        font-weight: bold;
+        text-align: center;
+        margin-top: 2px;
+    `;
+    casillasContainer.appendChild(puntajeDiv);
     
     // Botón Agregar
     const btnAgregar = document.createElement('button');
@@ -83,7 +96,7 @@ export function abrirZoomVisible(carta, indexVisible) {
     modal.style.display = 'flex';
 }
 
-// ----- ZOOM PARA CARTAS DEL JUGADOR -----
+// ZOOM PARA CARTAS DEL JUGADOR
 export function abrirZoomJugador(carta) {
     const modal = document.getElementById('zoomModal');
     const img = document.getElementById('zoomImage');
@@ -103,7 +116,8 @@ export function abrirZoomJugador(carta) {
     };
     img.style.display = 'block';
     
-    text.textContent = `${carta.color ? getColorName(carta.color) : 'Especial'} - Número ${carta.numero || ''}`;
+    const puntaje = getPuntajeCarta(carta);
+    text.textContent = `${carta.color ? getColorName(carta.color) : 'Especial'} - Número ${carta.numero || ''} (${puntaje} pts)`;
     
     casillasContainer.innerHTML = '';
     
@@ -154,7 +168,7 @@ export function abrirZoomJugador(carta) {
     
     // Estado
     const infoDiv = document.createElement('div');
-    infoDiv.textContent = progreso === 3 ? '✓ Carta completada' : `${progreso}/3`;
+    infoDiv.textContent = progreso === 3 ? '✓ Carta completada (+' + puntaje + ' pts)' : `${progreso}/3`;
     infoDiv.style.cssText = `
         text-align: center;
         color: ${progreso === 3 ? '#4caf50' : '#666'};
@@ -164,10 +178,22 @@ export function abrirZoomJugador(carta) {
     `;
     casillasContainer.appendChild(infoDiv);
     
+    if (progreso === 3) {
+        const msg = document.createElement('div');
+        msg.textContent = `⭐ Puntaje: +${puntaje} pts`;
+        msg.style.cssText = `
+            color: #ffd700;
+            font-size: 0.8rem;
+            text-align: center;
+            font-weight: bold;
+        `;
+        casillasContainer.appendChild(msg);
+    }
+    
     modal.style.display = 'flex';
 }
 
-// ----- ZOOM PARA LEADERBOARD (SOLO VISTA) -----
+// ZOOM PARA LEADERBOARD (SOLO VISTA)
 export function abrirZoomLeaderboard(carta, playerName, jugadorId) {
     const modal = document.getElementById('zoomModal');
     const img = document.getElementById('zoomImage');
@@ -187,7 +213,8 @@ export function abrirZoomLeaderboard(carta, playerName, jugadorId) {
     };
     img.style.display = 'block';
     
-    text.textContent = `${playerName} - ${carta.color ? getColorName(carta.color) : 'Especial'} N°${carta.numero || ''}`;
+    const puntaje = getPuntajeCarta(carta);
+    text.textContent = `${playerName} - ${carta.color ? getColorName(carta.color) : 'Especial'} N°${carta.numero || ''} (${puntaje} pts)`;
     
     casillasContainer.innerHTML = '';
     
@@ -221,7 +248,7 @@ export function abrirZoomLeaderboard(carta, playerName, jugadorId) {
     
     // Estado
     const infoDiv = document.createElement('div');
-    infoDiv.textContent = pProgreso === 3 ? '✓ Completada' : `${pProgreso}/3`;
+    infoDiv.textContent = pProgreso === 3 ? '✓ Completada (+' + puntaje + ' pts)' : `${pProgreso}/3`;
     infoDiv.style.cssText = `
         text-align: center;
         color: ${pProgreso === 3 ? '#4caf50' : '#666'};
@@ -246,7 +273,7 @@ export function abrirZoomLeaderboard(carta, playerName, jugadorId) {
     modal.style.display = 'flex';
 }
 
-// ----- CERRAR ZOOM -----
+// CERRAR ZOOM
 export function cerrarZoom() {
     const modal = document.getElementById('zoomModal');
     const casillasContainer = document.getElementById('zoomCasillas');

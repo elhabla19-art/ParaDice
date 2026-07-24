@@ -5,28 +5,21 @@
 import { state, initState } from './config-state.js';
 import { generarMazos, renderBoard, updateVisuals } from './mazos-tablero.js';
 import { cerrarZoom } from './zoom.js';
-import { repartirCartas, reiniciarTablero, calculateScores } from './juego.js';
+import { repartirCartas, reiniciarTablero, calculateScores, limpiarMano } from './juego.js';
 import { 
     playSolo, showJoinModal, backToLobby, 
     createRoom, joinRoom 
 } from './mqtt.js';
 import { toggleLeaderboard, abrirZoomLeaderboardDesdeCard } from './leaderboard.js';
-import { mostrarMensaje } from './utils.js';
 
-// ----- INICIALIZACIÓN -----
+// INICIALIZACIÓN
 function init() {
-    // Inicializar estado
     initState();
-    
-    // Generar mazos
     generarMazos();
-    
-    // Renderizar
     renderBoard();
     updateVisuals();
     calculateScores();
     
-    // Leaderboard cerrado en móvil
     if (window.innerWidth <= 768) {
         const content = document.getElementById('leaderboardContent');
         const icon = document.getElementById('toggleIcon');
@@ -37,6 +30,7 @@ function init() {
     // Exponer funciones globales
     window.repartirCartas = repartirCartas;
     window.reiniciarTablero = reiniciarTablero;
+    window.limpiarMano = limpiarMano;
     window.createRoom = createRoom;
     window.joinRoom = joinRoom;
     window.playSolo = playSolo;
@@ -49,27 +43,26 @@ function init() {
     console.log('🎲 ParaDice - Iniciado');
     console.log(`📦 Cartas en mazo: ${state.mazoColores.length}`);
     console.log(`⭐ Cartas especiales: ${state.mazoEspecial.length}`);
+    console.log('💡 Haz clic en "Repartir Cartas" para mostrar 4 cartas visibles');
+    console.log('💡 Luego haz clic en una carta visible para agregarla a tu mano');
 }
 
-// ----- EVENTOS GLOBALES -----
 document.addEventListener('DOMContentLoaded', init);
 
-// ----- CLICK FUERA DEL ZOOM PARA CERRAR -----
+// CERRAR ZOOM CON CLICK FUERA
 document.addEventListener('click', function(event) {
     const modal = document.getElementById('zoomModal');
     if (!modal) return;
-    
     if (event.target === modal) {
         cerrarZoom();
     }
 });
 
-// ----- TECLA ESC PARA CERRAR ZOOM -----
+// CERRAR ZOOM CON ESC
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         cerrarZoom();
     }
 });
 
-// Exportar funciones que otros módulos puedan necesitar
 export { repartirCartas, reiniciarTablero };

@@ -6,7 +6,7 @@ import { COLORES, state } from './config-state.js';
 import { mezclarArray, mostrarMensaje } from './utils.js';
 import { abrirZoomJugador, abrirZoomVisible } from './zoom.js';
 
-// ----- MAZOS -----
+// MAZOS
 export function generarMazos() {
     const mazoColoresTemp = [];
     COLORES.forEach(color => {
@@ -40,10 +40,11 @@ export function generarMazos() {
     
     COLORES.forEach(color => {
         state.tableroGlobal[color] = Array(6).fill(false);
+        state.fichas[color] = 0;
     });
 }
 
-// ----- RENDERIZADO -----
+// RENDERIZAR TABLERO
 export function renderBoard() {
     const boardElement = document.getElementById('game-board');
     if (!boardElement) return;
@@ -52,6 +53,7 @@ export function renderBoard() {
     COLORES.forEach(color => {
         const rowDiv = document.createElement('div');
         rowDiv.className = `row ${color}`;
+        rowDiv.dataset.color = color;
         
         for (let i = 0; i < 6; i++) {
             const box = document.createElement('div');
@@ -60,8 +62,34 @@ export function renderBoard() {
             box.dataset.color = color;
             box.dataset.index = i;
             
+            // Verificar si la ficha está en esta casilla (posición 0 = casilla 1)
+            const fichaPos = state.fichas[color] || 0;
+            if (i === fichaPos) {
+                box.classList.add('ficha-actual');
+                
+                // Ficha más grande y centrada
+                const fichaIndicador = document.createElement('div');
+                fichaIndicador.className = 'ficha-indicador';
+                fichaIndicador.style.cssText = `
+                    position: absolute;
+                    width: 70%;
+                    height: 70%;
+                    border-radius: 50%;
+                    background: ${getColorFicha(color)};
+                    box-shadow: 0 0 20px ${getColorFicha(color)};
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    border: 2px solid rgba(255,255,255,0.3);
+                    animation: pulse-ficha 1.5s ease-in-out infinite;
+                    z-index: 2;
+                `;
+                box.appendChild(fichaIndicador);
+            }
+            
+            // Si la casilla está marcada (completada), mostrar check
             if (state.tableroGlobal[color] && state.tableroGlobal[color][i]) {
-                box.classList.add('marked');
+                box.classList.add('marcada-tablero');
             }
             
             box.addEventListener('click', () => handleBoxClick(color, i));
@@ -76,6 +104,19 @@ export function renderBoard() {
     updateVisuals();
 }
 
+// Función para obtener color de ficha (más oscuro que el color de la fila)
+function getColorFicha(color) {
+    const colores = {
+        celeste: '#0288d1',    // Azul oscuro
+        lima: '#33691e',       // Verde oscuro
+        naranja: '#e65100',    // Naranja oscuro
+        purpura: '#4a148c',    // Púrpura oscuro
+        rosa: '#880e4f'        // Rosa oscuro
+    };
+    return colores[color] || '#333';
+}
+
+// RENDERIZAR CARTAS VISIBLES
 export function renderCartasVisibles() {
     const container = document.getElementById('cartas-visibles-container');
     if (!container) return;
@@ -117,6 +158,7 @@ export function renderCartasVisibles() {
     });
 }
 
+// RENDERIZAR CARTAS DEL JUGADOR
 export function renderCartasJugador() {
     const container = document.getElementById('jugador-cartas-container');
     if (!container) return;
@@ -195,24 +237,8 @@ export function renderCartasJugador() {
     });
 }
 
-// ----- ACTUALIZACIÓN VISUAL -----
+// ACTUALIZACIÓN VISUAL
 export function updateVisuals() {
-    COLORES.forEach(color => {
-        const rowDiv = document.querySelector(`.row.${color}`);
-        if (!rowDiv) return;
-        
-        const boxes = rowDiv.querySelectorAll('.box');
-        
-        boxes.forEach((box, index) => {
-            const estaMarcada = state.tableroGlobal[color] && state.tableroGlobal[color][index];
-            box.classList.remove('marked', 'disabled', 'last-marked');
-            if (estaMarcada) {
-                box.classList.add('marked');
-                box.classList.add('last-marked');
-            }
-        });
-    });
-    
     // Actualizar contadores
     const mazoColoresCount = document.getElementById('mazo-colores-count');
     const mazoEspecialCount = document.getElementById('mazo-especial-count');
@@ -236,8 +262,9 @@ export function updateVisuals() {
     }
 }
 
-// ----- MANEJADOR DE CLICK EN TABLERO -----
+// MANEJADOR DE CLICK EN TABLERO
 export function handleBoxClick(color, index) {
     // No se permite marcar directamente desde el tablero
-    console.warn('Marca las casillas desde tus cartas');
+    const fichaPos = state.fichas[color] || 0;
+    console.warn(`Ficha de ${color} está en casilla ${fichaPos}`);
 }

@@ -5,10 +5,10 @@
 import { state } from './config-state.js';
 import { showLoading, hideLoading, mostrarMensaje, getPlayerName } from './utils.js';
 import { generarMazos, renderBoard, updateVisuals, renderCartasVisibles, renderCartasJugador } from './mazos-tablero.js';
-import { calculateScores, repartirCartas } from './juego.js';
+import { calculateScores } from './juego.js';
 import { renderLeaderboard } from './leaderboard.js';
 
-// ----- CONECTAR A SALA -----
+// CONECTAR A SALA
 export function connectToRoom(code) {
     showLoading('Conectando con la sala...');
     
@@ -29,8 +29,10 @@ export function connectToRoom(code) {
             score: state.myTotalScore,
             cartasJugador: state.cartasJugador,
             mazoColores: state.mazoColores,
+            cartasVisibles: state.cartasVisibles,
             cartasRepartidas: state.cartasRepartidas,
             tablero: state.tableroGlobal,
+            fichas: state.fichas,
             progresoCartas: state.progresoCarta
         };
         
@@ -43,43 +45,62 @@ export function connectToRoom(code) {
             const data = JSON.parse(message.toString());
             if (data.id === state.myId) return;
 
+            // ACTUALIZAR MAZO Y VISIBLES (cuando alguien toma una carta)
+            if (data.action === 'mazo') {
+                state.mazoColores = data.mazoColores || state.mazoColores;
+                state.cartasVisibles = data.cartasVisibles || state.cartasVisibles;
+                renderCartasVisibles();
+                updateVisuals();
+                return;
+            }
+
+            // ACTUALIZAR TABLERO
             if (data.action === 'tablero' && data.tablero) {
                 state.tableroGlobal = data.tablero;
+                if (data.fichas) {
+                    state.fichas = data.fichas;
+                }
                 updateVisuals();
                 calculateScores();
                 renderCartasJugador();
+                renderBoard();
                 renderLeaderboard();
                 return;
             }
 
+            // ACTUALIZAR JUGADOR
             state.playersData[data.id] = {
                 name: data.name,
                 score: data.score || 0,
                 cartasJugador: data.cartasJugador || [],
                 mazoColores: data.mazoColores || [],
+                cartasVisibles: data.cartasVisibles || [],
                 cartasRepartidas: data.cartasRepartidas || false,
                 tablero: data.tablero || state.tableroGlobal,
+                fichas: data.fichas || state.fichas,
                 progresoCartas: data.progresoCartas || {}
             };
             renderLeaderboard();
 
+            // NUEVO JUGADOR - enviar estado completo
             if (data.action === 'join') {
                 setTimeout(() => {
                     broadcastTablero();
+                    broadcastMazo();
                 }, 500);
                 broadcastScore('sync');
             }
             
+            // REPARTIR CARTAS
             if (data.action === 'repartir') {
                 state.cartasVisibles = data.cartasVisibles || state.cartasVisibles;
                 state.mazoColores = data.mazoColores || state.mazoColores;
                 state.cartasRepartidas = data.cartasRepartidas || false;
-                if (data.cartasJugador && data.cartasJugador.length > 0) {
-                    state.cartasJugador = data.cartasJugador;
-                }
+                
                 renderCartasVisibles();
                 renderCartasJugador();
                 updateVisuals();
+                renderBoard();
             }
         } catch(e) {
             console.error('Mensaje invalido', e);
@@ -92,7 +113,21 @@ export function connectToRoom(code) {
     });
 }
 
-// ----- BROADCAST SCORE -----
+// BROADCAST MAZO (sincronizar mazo y visibles)
+export function broadcastMazo() {
+    if (state.mqttClient && state.currentRoom) {
+        const topic = `paradice_xyz/room/${state.currentRoom}`;
+        const payload = JSON.stringify({
+            action: 'mazo',
+            id: state.myId,
+            mazoColores: state.mazoColores,
+            cartasVisibles: state.cartasVisibles
+        });
+        state.mqttClient.publish(topic, payload);
+    }
+}
+
+// BROADCAST SCORE
 export function broadcastScore(action = 'sync') {
     if (state.mqttClient && state.currentRoom) {
         const topic = `paradice_xyz/room/${state.currentRoom}`;
@@ -103,29 +138,31 @@ export function broadcastScore(action = 'sync') {
             score: state.myTotalScore,
             cartasJugador: state.cartasJugador,
             mazoColores: state.mazoColores,
+            cartasVisibles: state.cartasVisibles,
             cartasRepartidas: state.cartasRepartidas,
             tablero: state.tableroGlobal,
-            progresoCartas: state.progresoCarta,
-            cartasVisibles: state.cartasVisibles
+            fichas: state.fichas,
+            progresoCartas: state.progresoCarta
         });
         state.mqttClient.publish(topic, payload);
     }
 }
 
-// ----- BROADCAST TABLERO -----
+// BROADCAST TABLERO
 export function broadcastTablero() {
     if (state.mqttClient && state.currentRoom) {
         const topic = `paradice_xyz/room/${state.currentRoom}`;
         const payload = JSON.stringify({
             action: 'tablero',
             id: state.myId,
-            tablero: state.tableroGlobal
+            tablero: state.tableroGlobal,
+            fichas: state.fichas
         });
         state.mqttClient.publish(topic, payload);
     }
 }
 
-// ----- JOIN SUCCESS -----
+// JOIN SUCCESS
 function joinSuccess(code) {
     hideLoading();
     document.getElementById('lobbyModal').style.display = 'none';
@@ -141,18 +178,22 @@ function joinSuccess(code) {
     renderLeaderboard();
 }
 
-// ----- FUNCIONES DE LOBBY -----
+// FUNCIONES DE LOBBY
 export function playSolo() {
     state.myName = getPlayerName();
     document.getElementById('lobbyModal').style.display = 'none';
     state.progresoCarta = {};
+    state.myTotalScore = 0;
+    state.cartasJugador = Array(4).fill(null);
     state.playersData[state.myId] = {
         name: state.myName,
         score: 0,
-        cartasJugador: [],
+        cartasJugador: state.cartasJugador,
         mazoColores: [],
+        cartasVisibles: [],
         cartasRepartidas: false,
         tablero: state.tableroGlobal,
+        fichas: state.fichas,
         progresoCartas: {}
     };
     generarMazos();

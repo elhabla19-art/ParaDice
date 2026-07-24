@@ -1018,3 +1018,103 @@ h1 {
         font-size: 0.8rem !important;
     }
 }
+
+/* ============================================
+   FICHAS EN EL TABLERO
+   ============================================ */
+
+/* Casilla donde está la ficha */
+.box.ficha-actual {
+    position: relative;
+    border: 2px solid rgba(255, 255, 255, 0.5) !important;
+    box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.1);
+    z-index: 1;
+}
+
+/* Ficha - círculo grande y centrado */
+.ficha-indicador {
+    position: absolute;
+    width: 70%;
+    height: 70%;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    z-index: 2;
+    animation: pulse-ficha 1.5s ease-in-out infinite;
+}
+
+/* Colores de fichas por fila (más oscuros) */
+.row.celeste .ficha-indicador {
+    background: #0288d1;
+    box-shadow: 0 0 25px rgba(2, 136, 209, 0.6);
+}
+
+.row.lima .ficha-indicador {
+    background: #33691e;
+    box-shadow: 0 0 25px rgba(51, 105, 30, 0.6);
+}
+
+.row.naranja .ficha-indicador {
+    background: #e65100;
+    box-shadow: 0 0 25px rgba(230, 81, 0, 0.6);
+}
+
+.row.purpura .ficha-indicador {
+    background: #4a148c;
+    box-shadow: 0 0 25px rgba(74, 20, 140, 0.6);
+}
+
+.row.rosa .ficha-indicador {
+    background: #880e4f;
+    box-shadow: 0 0 25px rgba(136, 14, 79, 0.6);
+}
+
+@keyframes pulse-ficha {
+    0%, 100% { 
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    50% { 
+        transform: translate(-50%, -50%) scale(1.1);
+        opacity: 0.85;
+    }
+}
+
+/* Casillas ya completadas (cuando la ficha pasó) */
+.box.marcada-tablero {
+    background-color: rgba(0, 0, 0, 0.4) !important;
+    opacity: 0.8;
+    position: relative;
+}
+
+.box.marcada-tablero::after {
+    content: "✓";
+    position: absolute;
+    font-size: 1.4em;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.8);
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    text-shadow: 0 0 15px rgba(0,0,0,0.9);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+}
+
+/* Asegurar que el número de la casilla se vea detrás de la ficha */
+.box.ficha-actual .box-number {
+    position: relative;
+    z-index: 0;
+}
+
+/* Para el tablero en general */
+.row {
+    position: relative;
+}
+
+/* Ajuste para que el número se vea cuando hay ficha */
+.box.ficha-actual {
+    color: rgba(255, 255, 255, 0.9);
+}

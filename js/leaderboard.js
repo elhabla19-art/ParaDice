@@ -4,8 +4,9 @@
 
 import { COLORES, state } from './config-state.js';
 import { abrirZoomLeaderboard } from './zoom.js';
+import { getPuntajeCarta } from './juego.js';
 
-// ----- RENDERIZAR LEADERBOARD -----
+// RENDERIZAR LEADERBOARD
 export function renderLeaderboard() {
     const list = document.getElementById('playersList');
     if (!list) return;
@@ -33,6 +34,7 @@ export function renderLeaderboard() {
                     const key = `${carta.color}-${carta.numero}`;
                     const progreso = pProgreso[key] || 0;
                     const isCompleta = progreso === 3;
+                    const puntaje = getPuntajeCarta(carta);
                     
                     const colorAbr = carta.color ? carta.color.substring(0, 2) : 'E';
                     
@@ -58,8 +60,8 @@ export function renderLeaderboard() {
                                     ">${i <= progreso ? '✓' : ''}</span>
                                 `).join('')}
                             </div>
-                            <div style="font-size:0.5rem; color:${isCompleta ? '#4caf50' : '#888'}; margin-top:1px;">
-                                ${progreso}/3
+                            <div style="font-size:0.5rem; color:${isCompleta ? '#ffd700' : '#888'}; margin-top:1px;">
+                                ${isCompleta ? '⭐' + puntaje : progreso + '/3'}
                             </div>
                         </div>
                     `;
@@ -86,7 +88,7 @@ export function renderLeaderboard() {
     });
 }
 
-// ----- TOGGLE LEADERBOARD -----
+// TOGGLE LEADERBOARD
 export function toggleLeaderboard() {
     const content = document.getElementById('leaderboardContent');
     const icon = document.getElementById('toggleIcon');
@@ -101,7 +103,7 @@ export function toggleLeaderboard() {
     }
 }
 
-// ----- ABRIR ZOOM DESDE LEADERBOARD -----
+// ABRIR ZOOM DESDE LEADERBOARD
 export function abrirZoomLeaderboardDesdeCard(playerId, cartaIndex) {
     const player = state.playersData[playerId];
     if (!player || !player.cartasJugador || !player.cartasJugador[cartaIndex]) {
