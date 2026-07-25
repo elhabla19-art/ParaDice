@@ -67,7 +67,8 @@ function contarCartasCompletadasPorColor(jugadorId, color) {
     let completadas = 0;
     for (let i = 1; i <= 9; i++) {
         const key = `${color}-${i}`;
-        if (player.progresoCartas[key] === 3) {
+        const data = player.progresoCartas[key];
+        if (data && data.completada === true) {
             completadas++;
         }
     }
@@ -81,7 +82,8 @@ export function getCartasCompletadasPorColor(jugadorId, color) {
     const completadas = [];
     for (let i = 1; i <= 9; i++) {
         const key = `${color}-${i}`;
-        if (player.progresoCartas[key] === 3) {
+        const data = player.progresoCartas[key];
+        if (data && data.completada === true) {
             completadas.push(i);
         }
     }
@@ -133,7 +135,8 @@ function verificarTicketBonus(jugadorId) {
     COLORES.forEach(color => {
         for (let i = 1; i <= 9; i++) {
             const key = `${color}-${i}`;
-            if (player.progresoCartas[key] === 3) {
+            const data = player.progresoCartas[key];
+            if (data && data.completada === true) {
                 coloresCompletos++;
                 break;
             }
@@ -161,7 +164,8 @@ function actualizarPuntajesConTickets() {
         COLORES.forEach(color => {
             for (let i = 1; i <= 9; i++) {
                 const key = `${color}-${i}`;
-                if (player.progresoCartas[key] === 3) {
+                const data = player.progresoCartas[key];
+                if (data && data.completada === true) {
                     puntaje += PUNTAJES[color][i - 1] || 0;
                 }
             }
@@ -196,65 +200,81 @@ function actualizarPuntajesConTickets() {
 
 export function completarCarta(carta, casillaNumero) {
     const key = `${carta.color}-${carta.numero}`;
+    
+    // Inicializar como objeto con casillas marcadas
     if (!state.progresoCarta[key]) {
-        state.progresoCarta[key] = 0;
+        state.progresoCarta[key] = { marcadas: [], completada: false };
     }
     
-    if (casillaNumero === state.progresoCarta[key] + 1) {
-        state.progresoCarta[key]++;
-        const nuevoProgreso = state.progresoCarta[key];
+    const progreso = state.progresoCarta[key];
+    
+    // Verificar si la carta ya está completada
+    if (progreso.completada) {
+        mostrarMensaje(`Esta carta ya está completada`, 'warning');
+        return;
+    }
+    
+    // Verificar si esta casilla ya fue marcada
+    if (progreso.marcadas.includes(casillaNumero)) {
+        mostrarMensaje(`La casilla ${casillaNumero} ya está marcada`, 'warning');
+        return;
+    }
+    
+    // Marcar la casilla
+    progreso.marcadas.push(casillaNumero);
+    const totalMarcadas = progreso.marcadas.length;
+    
+    // Verificar si se completaron las 3 casillas
+    if (totalMarcadas === 3) {
+        progreso.completada = true;
         
-        if (nuevoProgreso === 3) {
-            // Avanzar ficha
-            if (!state.fichas[carta.color]) {
-                state.fichas[carta.color] = 0;
-            }
-            if (state.fichas[carta.color] < 5) {
-                state.fichas[carta.color]++;
-            }
-            
-            // MOVER CARTA A TERMINADAS
-            const cartaIndex = state.cartasJugador.findIndex(c => c && c.id === carta.id);
-            if (cartaIndex !== -1) {
-                state.cartasJugador[cartaIndex] = null;
-                state.cartasTerminadas.push(carta);
-                state.habilidadesUsadas[carta.id] = false;
-            }
-            
-            const puntaje = getPuntajeCarta(carta);
-            mostrarMensaje(`Carta ${carta.color} N°${carta.numero} completada! (+${puntaje} pts)`, 'success');
-            
-            const completadasColor = contarCartasCompletadasPorColor(state.myId, carta.color);
-            if (completadasColor >= 2) {
-                verificarTicketsColor();
-            }
-            verificarTicketBonus(state.myId);
-            actualizarPuntajesConTickets();
-            
-            if (state.currentRoom) {
-                broadcastTickets();
-                broadcastTablero();
-            }
-            
-            // Cerrar zoom SOLO cuando se completa la carta
-            cerrarZoom();
-        } else {
-            // Actualizar zoom sin cerrarlo
-            actualizarZoomJugador(carta);
+        // Avanzar ficha
+        if (!state.fichas[carta.color]) {
+            state.fichas[carta.color] = 0;
+        }
+        if (state.fichas[carta.color] < 5) {
+            state.fichas[carta.color]++;
         }
         
-        updateVisuals();
-        renderCartasJugador();
-        renderBoard();
-        renderLeaderboard();
-        renderStatusPanel();
-        actualizarBotonEspecial();
+        // MOVER CARTA A TERMINADAS
+        const cartaIndex = state.cartasJugador.findIndex(c => c && c.id === carta.id);
+        if (cartaIndex !== -1) {
+            state.cartasJugador[cartaIndex] = null;
+            state.cartasTerminadas.push(carta);
+            state.habilidadesUsadas[carta.id] = false;
+        }
+        
+        const puntaje = getPuntajeCarta(carta);
+        mostrarMensaje(`Carta ${carta.color} N°${carta.numero} completada! (+${puntaje} pts)`, 'success');
+        
+        const completadasColor = contarCartasCompletadasPorColor(state.myId, carta.color);
+        if (completadasColor >= 2) {
+            verificarTicketsColor();
+        }
+        verificarTicketBonus(state.myId);
+        actualizarPuntajesConTickets();
         
         if (state.currentRoom) {
-            broadcastScore('sync');
+            broadcastTickets();
+            broadcastTablero();
         }
+        
+        // Cerrar zoom SOLO cuando se completa la carta
+        cerrarZoom();
     } else {
-        mostrarMensaje(`Debes marcar en orden: primero ${state.progresoCarta[key] + 1}`, 'error');
+        // Actualizar zoom sin cerrarlo
+        actualizarZoomJugador(carta);
+    }
+    
+    updateVisuals();
+    renderCartasJugador();
+    renderBoard();
+    renderLeaderboard();
+    renderStatusPanel();
+    actualizarBotonEspecial();
+    
+    if (state.currentRoom) {
+        broadcastScore('sync');
     }
 }
 
@@ -317,7 +337,7 @@ export function agregarCartaAJugador(indexVisible) {
     }
     
     const key = `${carta.color}-${carta.numero}`;
-    state.progresoCarta[key] = 0;
+    state.progresoCarta[key] = { marcadas: [], completada: false };
     
     cerrarZoom();
     renderCartasVisibles();

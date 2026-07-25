@@ -10,11 +10,15 @@ import { completarCarta, agregarCartaAJugador, getPuntajeCarta, usarHabilidad, i
 // CREAR CASILLAS (función auxiliar)
 // ============================================
 
-function crearCasillas(container, progreso, completada, carta) {
+function crearCasillas(container, progresoData, carta) {
     container.innerHTML = '';
     
+    // Obtener datos del progreso
+    const marcadas = progresoData?.marcadas || [];
+    const completada = progresoData?.completada || false;
+    
     for (let i = 1; i <= 3; i++) {
-        const estaMarcada = i <= progreso;
+        const estaMarcada = marcadas.includes(i);
         const div = document.createElement('div');
         div.textContent = estaMarcada ? `${i} ✓` : i;
         div.style.cssText = `
@@ -25,22 +29,50 @@ function crearCasillas(container, progreso, completada, carta) {
             display: flex; justify-content: center; align-items: center;
             font-size: 1.2rem; font-weight: bold;
             color: ${estaMarcada ? '#4caf50' : '#fff'};
-            cursor: ${estaMarcada || completada ? 'default' : 'pointer'};
+            cursor: ${completada ? 'default' : 'pointer'};
             transition: all 0.2s;
         `;
         
         if (!estaMarcada && !completada) {
-            div.onmouseenter = () => { div.style.background = 'rgba(255,255,255,0.2)'; div.style.borderColor = '#4caf50'; div.style.transform = 'scale(1.05)'; };
-            div.onmouseleave = () => { div.style.background = 'rgba(255,255,255,0.1)'; div.style.borderColor = 'rgba(255,255,255,0.2)'; div.style.transform = 'scale(1)'; };
+            div.onmouseenter = () => { 
+                div.style.background = 'rgba(255,255,255,0.2)'; 
+                div.style.borderColor = '#4caf50'; 
+                div.style.transform = 'scale(1.05)'; 
+            };
+            div.onmouseleave = () => { 
+                div.style.background = 'rgba(255,255,255,0.1)'; 
+                div.style.borderColor = 'rgba(255,255,255,0.2)'; 
+                div.style.transform = 'scale(1)'; 
+            };
             div.onclick = () => completarCarta(carta, i);
         }
         container.appendChild(div);
     }
     
+    // Información de progreso
     const info = document.createElement('div');
-    info.textContent = completada ? '✓ Completada' : `${progreso}/3`;
-    info.style.cssText = `text-align:center; color:${completada ? '#4caf50' : '#666'}; font-size:${completada ? '1rem' : '0.7rem'}; font-weight:${completada ? 'bold' : 'normal'}; margin-top:5px;`;
+    info.textContent = completada ? '✓ Completada' : `${marcadas.length}/3`;
+    info.style.cssText = `
+        text-align:center; 
+        color:${completada ? '#4caf50' : '#666'}; 
+        font-size:${completada ? '1rem' : '0.7rem'}; 
+        font-weight:${completada ? 'bold' : 'normal'}; 
+        margin-top:5px;
+    `;
     container.appendChild(info);
+    
+    // Si está completada, mostrar mensaje adicional
+    if (completada) {
+        const msg = document.createElement('div');
+        msg.textContent = '✅ Carta completada';
+        msg.style.cssText = `
+            color: #4caf50;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-top: 2px;
+        `;
+        container.appendChild(msg);
+    }
 }
 
 // ============================================
@@ -80,18 +112,43 @@ export function abrirZoomVisible(carta, indexVisible) {
     for (let i = 1; i <= 3; i++) {
         const div = document.createElement('div');
         div.textContent = i;
-        div.style.cssText = `width:50px; height:50px; background:rgba(255,255,255,0.1); border:2px solid rgba(255,255,255,0.2); border-radius:8px; display:flex; justify-content:center; align-items:center; font-size:1.2rem; font-weight:bold; color:#fff; cursor:default;`;
+        div.style.cssText = `
+            width:50px; height:50px; 
+            background:rgba(255,255,255,0.1); 
+            border:2px solid rgba(255,255,255,0.2); 
+            border-radius:8px; 
+            display:flex; justify-content:center; align-items:center; 
+            font-size:1.2rem; font-weight:bold; 
+            color:#fff; cursor:default;
+        `;
         casillas.appendChild(div);
     }
     
     const pts = document.createElement('div');
     pts.textContent = `⭐ ${getPuntajeCarta(carta)} pts`;
-    pts.style.cssText = `color:#ffd700; font-size:0.8rem; font-weight:bold; text-align:center; margin-top:2px;`;
+    pts.style.cssText = `
+        color:#ffd700; 
+        font-size:0.8rem; 
+        font-weight:bold; 
+        text-align:center; 
+        margin-top:2px;
+    `;
     casillas.appendChild(pts);
     
     const btn = document.createElement('button');
     btn.textContent = 'Agregar a Mi Mano';
-    btn.style.cssText = `background:#4caf50; color:white; border:none; padding:10px 25px; border-radius:8px; font-size:1rem; font-weight:bold; cursor:pointer; width:100%; margin-top:10px;`;
+    btn.style.cssText = `
+        background:#4caf50; 
+        color:white; 
+        border:none; 
+        padding:10px 25px; 
+        border-radius:8px; 
+        font-size:1rem; 
+        font-weight:bold; 
+        cursor:pointer; 
+        width:100%; 
+        margin-top:10px;
+    `;
     btn.onclick = () => agregarCartaAJugador(indexVisible);
     casillas.appendChild(btn);
 }
@@ -105,16 +162,16 @@ export function abrirZoomJugador(carta) {
     if (!result) return;
     const { casillas } = result;
     const key = `${carta.color}-${carta.numero}`;
-    const progreso = state.progresoCarta[key] || 0;
-    crearCasillas(casillas, progreso, progreso === 3, carta);
+    const progresoData = state.progresoCarta[key] || { marcadas: [], completada: false };
+    crearCasillas(casillas, progresoData, carta);
 }
 
 export function actualizarZoomJugador(carta) {
     const casillas = document.getElementById('zoomCasillas');
     if (!casillas) return;
     const key = `${carta.color}-${carta.numero}`;
-    const progreso = state.progresoCarta[key] || 0;
-    crearCasillas(casillas, progreso, progreso === 3, carta);
+    const progresoData = state.progresoCarta[key] || { marcadas: [], completada: false };
+    crearCasillas(casillas, progresoData, carta);
 }
 
 // ============================================
@@ -129,20 +186,40 @@ export function abrirZoomTerminada(carta) {
     for (let i = 1; i <= 3; i++) {
         const div = document.createElement('div');
         div.textContent = `${i} ✓`;
-        div.style.cssText = `width:50px; height:50px; background:rgba(76,175,80,0.3); border:2px solid #4caf50; border-radius:8px; display:flex; justify-content:center; align-items:center; font-size:1.2rem; font-weight:bold; color:#4caf50; cursor:default;`;
+        div.style.cssText = `
+            width:50px; height:50px; 
+            background:rgba(76,175,80,0.3); 
+            border:2px solid #4caf50; 
+            border-radius:8px; 
+            display:flex; justify-content:center; align-items:center; 
+            font-size:1.2rem; font-weight:bold; 
+            color:#4caf50; cursor:default;
+        `;
         casillas.appendChild(div);
     }
     
     const habilidad = HABILIDADES[carta.color];
     const usada = isHabilidadUsada(carta);
     const info = document.createElement('div');
-    info.style.cssText = `text-align:center; margin-top:10px; width:100%; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px;`;
+    info.style.cssText = `
+        text-align:center; 
+        margin-top:10px; 
+        width:100%; 
+        padding:10px; 
+        background:rgba(255,255,255,0.05); 
+        border-radius:8px;
+    `;
     info.innerHTML = habilidad ? `
         <div style="font-size:1.5rem;">${habilidad.icono}</div>
         <div style="font-weight:bold; color:${habilidad.color};">${habilidad.nombre}</div>
         <div style="font-size:0.8rem; color:#aaa;">${habilidad.descripcion}</div>
-        <div style="font-size:0.8rem; margin-top:4px; color:${usada ? '#666' : '#4caf50'}; font-weight:bold;">${usada ? '✓ Usada' : '✨ Disponible'}</div>
-        ${!usada ? `<button onclick="window.usarHabilidadDesdeZoom('${carta.id}')" style="margin-top:8px; background:#4caf50; color:white; border:none; padding:6px 20px; border-radius:6px; font-size:0.8rem; font-weight:bold; cursor:pointer;">Usar Habilidad</button>` : ''}
+        <div style="font-size:0.8rem; margin-top:4px; color:${usada ? '#666' : '#4caf50'}; font-weight:bold;">
+            ${usada ? '✓ Usada' : '✨ Disponible'}
+        </div>
+        ${!usada ? `<button onclick="window.usarHabilidadDesdeZoom('${carta.id}')" 
+                    style="margin-top:8px; background:#4caf50; color:white; border:none; padding:6px 20px; border-radius:6px; font-size:0.8rem; font-weight:bold; cursor:pointer;">
+                    Usar Habilidad
+                   </button>` : ''}
     ` : `<div style="color:#888;">Sin habilidad especial</div>`;
     casillas.appendChild(info);
 }
@@ -159,30 +236,63 @@ export function abrirZoomLeaderboard(carta, playerName, jugadorId) {
     // Mostrar nombre del jugador
     const nombreJugador = document.createElement('div');
     nombreJugador.textContent = `👤 ${playerName}`;
-    nombreJugador.style.cssText = `color:#4fc3f7; font-size:0.9rem; font-weight:bold; text-align:center; margin-bottom:8px; width:100%;`;
+    nombreJugador.style.cssText = `
+        color:#4fc3f7; 
+        font-size:0.9rem; 
+        font-weight:bold; 
+        text-align:center; 
+        margin-bottom:8px; 
+        width:100%;
+    `;
     casillas.appendChild(nombreJugador);
     
     // Mostrar progreso de la carta
     const pData = state.playersData[jugadorId];
-    const progreso = pData?.progresoCartas?.[`${carta.color}-${carta.numero}`] || 0;
+    const progresoData = pData?.progresoCartas?.[`${carta.color}-${carta.numero}`] || { marcadas: [], completada: false };
+    const marcadas = progresoData.marcadas || [];
+    const completada = progresoData.completada || false;
     
     for (let i = 1; i <= 3; i++) {
-        const esta = i <= progreso;
+        const estaMarcada = marcadas.includes(i);
         const div = document.createElement('div');
-        div.textContent = esta ? `${i} ✓` : i;
-        div.style.cssText = `width:50px; height:50px; background:${esta ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.1)'}; border:2px solid ${esta ? '#4caf50' : 'rgba(255,255,255,0.2)'}; border-radius:8px; display:flex; justify-content:center; align-items:center; font-size:1.2rem; font-weight:bold; color:${esta ? '#4caf50' : '#fff'}; cursor:default;`;
+        div.textContent = estaMarcada ? `${i} ✓` : i;
+        div.style.cssText = `
+            width:50px; height:50px; 
+            background:${estaMarcada ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.1)'}; 
+            border:2px solid ${estaMarcada ? '#4caf50' : 'rgba(255,255,255,0.2)'}; 
+            border-radius:8px; 
+            display:flex; justify-content:center; align-items:center; 
+            font-size:1.2rem; font-weight:bold; 
+            color:${estaMarcada ? '#4caf50' : '#fff'}; 
+            cursor:default;
+        `;
         casillas.appendChild(div);
     }
     
     const info = document.createElement('div');
-    info.textContent = progreso === 3 ? '✓ Completada' : `${progreso}/3`;
-    info.style.cssText = `text-align:center; color:${progreso === 3 ? '#4caf50' : '#666'}; font-size:${progreso === 3 ? '1rem' : '0.7rem'}; font-weight:${progreso === 3 ? 'bold' : 'normal'}; margin-top:5px;`;
+    info.textContent = completada ? '✓ Completada' : `${marcadas.length}/3`;
+    info.style.cssText = `
+        text-align:center; 
+        color:${completada ? '#4caf50' : '#666'}; 
+        font-size:${completada ? '1rem' : '0.7rem'}; 
+        font-weight:${completada ? 'bold' : 'normal'}; 
+        margin-top:5px;
+    `;
     casillas.appendChild(info);
     
     // Indicador de solo vista
     const msg = document.createElement('div');
     msg.textContent = '🔒 Solo vista';
-    msg.style.cssText = `color:#666; font-size:0.65rem; text-align:center; margin-top:6px; font-style:italic; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px; width:100%;`;
+    msg.style.cssText = `
+        color:#666; 
+        font-size:0.65rem; 
+        text-align:center; 
+        margin-top:6px; 
+        font-style:italic; 
+        border-top:1px solid rgba(255,255,255,0.05); 
+        padding-top:6px; 
+        width:100%;
+    `;
     casillas.appendChild(msg);
 }
 

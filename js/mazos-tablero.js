@@ -180,17 +180,19 @@ export function renderCartasJugador() {
                 div.style.cursor = 'pointer';
                 
                 const key = `${carta.color}-${carta.numero}`;
-                const progreso = state.progresoCarta[key] || 0;
+                const progresoData = state.progresoCarta[key] || { marcadas: [], completada: false };
+                const totalMarcadas = progresoData.marcadas?.length || 0;
+                const estaCompletada = progresoData.completada || false;
                 
                 const progressDiv = document.createElement('div');
                 progressDiv.className = 'carta-progreso';
-                progressDiv.textContent = `${progreso}/3`;
+                progressDiv.textContent = estaCompletada ? '✓' : `${totalMarcadas}/3`;
                 progressDiv.style.cssText = `
                     position: absolute;
                     bottom: 3px;
                     right: 3px;
                     font-size: 0.5rem;
-                    color: ${progreso === 3 ? '#4caf50' : '#888'};
+                    color: ${estaCompletada ? '#4caf50' : '#888'};
                     background: rgba(0,0,0,0.8);
                     padding: 1px 5px;
                     border-radius: 6px;

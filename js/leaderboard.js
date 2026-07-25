@@ -86,7 +86,14 @@ export function renderLeaderboard() {
                 rosa: '#f06292'
             }[carta.color] : '#444';
             
-            const progreso = carta ? (pProgreso[`${carta.color}-${carta.numero}`] || 0) : 0;
+            // Obtener progreso de la carta usando el nuevo formato
+            let progresoData = { marcadas: [], completada: false };
+            if (carta) {
+                const key = `${carta.color}-${carta.numero}`;
+                progresoData = pProgreso[key] || { marcadas: [], completada: false };
+            }
+            const marcadas = progresoData.marcadas || [];
+            
             const tieneCarta = carta !== null;
             const esClickeable = tieneCarta && p.id !== state.myId;
             
@@ -95,9 +102,12 @@ export function renderLeaderboard() {
                      style="background: ${tieneCarta ? colorHex + '22' : '#2a2a2a'}; border: 2px solid ${tieneCarta ? colorHex : '#444'}; ${esClickeable ? 'cursor: pointer;' : ''}"
                      onclick="${esClickeable ? `window.abrirZoomLeaderboardDesdeCard('${p.id}', ${i})` : ''}">
                     <div class="mini-carta-casillas">
-                        ${[1, 2, 3].map(j => `
-                            <span class="mini-casilla ${(tieneCarta && j <= progreso) ? 'llena' : ''}"></span>
-                        `).join('')}
+                        ${[1, 2, 3].map(j => {
+                            const estaMarcada = marcadas.includes(j);
+                            return `
+                                <span class="mini-casilla ${(tieneCarta && estaMarcada) ? 'llena' : ''}"></span>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
             `;
