@@ -122,9 +122,8 @@
                 <div class="board" id="game-board"></div>
             </div>
 
-            <!-- Cartas visibles horizontales -->
+            <!-- Cartas visibles horizontales (sin label) -->
             <div class="cartas-visibles-horizontal">
-                <div class="cartas-label">Visibles</div>
                 <div id="cartas-visibles-container" class="cartas-horizontal">
                     <div class="carta-visible vacia" data-index="0">Vacio</div>
                     <div class="carta-visible vacia" data-index="1">Vacio</div>
@@ -135,14 +134,14 @@
 
             <!-- Controles -->
             <div class="controles-juego">
-                <button class="btn-control btn-repartir" onclick="window.repartirCartas()">Repartir Cartas</button>
-                <button class="btn-control btn-especial" onclick="window.usarCartaEspecial()">Carta Especial</button>
+                <button class="btn-control btn-repartir" onclick="window.repartirCartas()">Casetas</button>
+                <button class="btn-control btn-especial" onclick="window.usarCartaEspecial()">Bolsa</button>
                 <button class="btn-control btn-reiniciar" onclick="window.reiniciarTablero()">Reiniciar</button>
                 <div class="info-mazo">
-                    <span>Restantes: <strong id="mazo-restantes">45</strong></span>
+                    <span>Casetas: <strong id="mazo-restantes">45</strong></span>
                 </div>
                 <div class="info-mazo">
-                    <span>Especiales: <strong id="mazo-especial-restantes">9</strong></span>
+                    <span>Bolsa: <strong id="mazo-especial-restantes">9</strong></span>
                 </div>
             </div>
         </div>
@@ -150,8 +149,7 @@
         <!-- TUS CARTAS -->
         <div class="jugador-cartas-container">
             <div class="cartas-header">
-                <span class="header-label">Mis Cartas</span>
-                <span class="header-info" id="cartas-info">Mano: 0/5 | Terminadas: 0</span>
+                <span class="header-label">Mis Casetas</span>
             </div>
             
             <div class="cartas-grid">

@@ -2,13 +2,13 @@
 // LÓGICA DEL JUEGO
 // ============================================
 
-import { COLORES, state, PUNTAJES, TICKETS, HABILIDADES } from './config-state.js';
+import { COLORES, state, PUNTAJES, TICKETS, HABILIDADES, initState } from './config-state.js';
 import { mostrarMensaje } from './utils.js';
-import { renderCartasVisibles, renderCartasJugador, updateVisuals, renderBoard } from './mazos-tablero.js';
+import { renderCartasVisibles, renderCartasJugador, updateVisuals, renderBoard, generarMazos } from './mazos-tablero.js';
 import { cerrarZoom, actualizarZoomJugador } from './zoom.js';
 import { broadcastScore, broadcastTablero, broadcastMazo, broadcastTickets } from './mqtt.js';
 import { renderLeaderboard } from './leaderboard.js';
-import { renderStatusPanel } from './main.js';
+import { renderStatusPanel } from './panel.js';
 
 // ============================================
 // FUNCIONES DE PUNTAJE Y HABILIDADES
@@ -787,12 +787,6 @@ export function calculateScores() {
         mazoEspecialRestantes.textContent = state.mazoEspecialDisponible.length;
     }
 
-    const cartasInfo = document.getElementById('cartas-info');
-    if (cartasInfo) {
-        const manoCount = state.cartasJugador.filter(c => c !== null).length;
-        cartasInfo.textContent = `Mano: ${manoCount}/5 | Terminadas: ${state.cartasTerminadas.length}`;
-    }
-
     // 4. Actualizar playersData con el puntaje correcto
     if (state.currentRoom) {
         state.playersData[state.myId] = {
@@ -878,40 +872,89 @@ export function repartirCartas() {
 }
 
 // ============================================
-// REINICIAR Y LIMPIAR
+// REINICIAR TODO
 // ============================================
 
-export function reiniciarTablero() {
+export function reiniciarTodo() {
+    // 1. Reiniciar estado global
+    initState();
+    
+    // 2. Regenerar mazos
+    generarMazos();
+    
+    // 3. Reiniciar datos del jugador en playersData
+    if (state.playersData[state.myId]) {
+        state.playersData[state.myId] = {
+            name: state.myName || 'Jugador',
+            score: 0,
+            cartasJugador: Array(5).fill(null),
+            cartasTerminadas: [],
+            habilidadesUsadas: {},
+            mazoColores: state.mazoColores,
+            mazoEspecialDisponible: state.mazoEspecialDisponible,
+            cartasVisibles: Array(4).fill(null),
+            cartasRepartidas: false,
+            tablero: state.tableroGlobal,
+            fichas: state.fichas,
+            progresoCartas: {},
+            cartasEspecialesUsadas: 0,
+            puntosEspeciales: []
+        };
+    }
+    
+    // 4. Resetear variables de estado
+    state.myTotalScore = 0;
+    state.cartasRepartidas = false;
+    state.progresoCarta = {};
+    state.habilidadesUsadas = {};
+    state.cartasEspecialesUsadas = 0;
+    state.cartasJugador = Array(5).fill(null);
+    state.cartasTerminadas = [];
+    state.cartasVisibles = Array(4).fill(null);
+    state.cartaSeleccionada = null;
+    state.cartaEspecialActual = null;
+    state.modoEspecial = null;
+    
+    // 5. Resetear tickets
     COLORES.forEach(color => {
-        state.tableroGlobal[color] = Array(6).fill(false);
-        state.fichas[color] = 0;
         state.tickets[color] = null;
     });
     state.bonusTicket = null;
     state.bonusReclamado = false;
-    state.progresoCarta = {};
-    state.cartasTerminadas = [];
-    state.habilidadesUsadas = {};
-    state.cartasJugador = Array(5).fill(null);
-    state.cartasEspecialesUsadas = 0;
-    state.myTotalScore = 0;
     
-    // Resetear puntosEspeciales
+    // 6. Resetear puntos especiales
     if (state.playersData[state.myId]) {
         state.playersData[state.myId].puntosEspeciales = [];
     }
     
+    // 7. Renderizar todo
+    renderBoard();
+    renderCartasVisibles();
+    renderCartasJugador();
     updateVisuals();
     calculateScores();
-    renderCartasJugador();
-    renderBoard();
     renderStatusPanel();
+    renderLeaderboard();
     actualizarBotonEspecial();
+    
+    // 8. Broadcast si está en sala
     if (state.currentRoom) {
+        broadcastMazo();
         broadcastTablero();
         broadcastTickets();
+        broadcastScore('reiniciar');
     }
-    mostrarMensaje('Tablero reiniciado', 'info');
+    
+    mostrarMensaje('🔄 Juego reiniciado completamente', 'info');
+}
+
+// ============================================
+// REINICIAR Y LIMPIAR (MANTENER POR COMPATIBILIDAD)
+// ============================================
+
+export function reiniciarTablero() {
+    // Ahora llama a reiniciarTodo para reiniciar completamente
+    reiniciarTodo();
 }
 
 export function limpiarMano() {
