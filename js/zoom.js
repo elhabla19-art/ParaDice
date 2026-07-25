@@ -148,7 +148,7 @@ export function abrirZoomTerminada(carta) {
 }
 
 // ============================================
-// ZOOM: LEADERBOARD
+// ZOOM: LEADERBOARD (OTROS JUGADORES)
 // ============================================
 
 export function abrirZoomLeaderboard(carta, playerName, jugadorId) {
@@ -156,6 +156,13 @@ export function abrirZoomLeaderboard(carta, playerName, jugadorId) {
     if (!result) return;
     const { casillas } = result;
     
+    // Mostrar nombre del jugador
+    const nombreJugador = document.createElement('div');
+    nombreJugador.textContent = `👤 ${playerName}`;
+    nombreJugador.style.cssText = `color:#4fc3f7; font-size:0.9rem; font-weight:bold; text-align:center; margin-bottom:8px; width:100%;`;
+    casillas.appendChild(nombreJugador);
+    
+    // Mostrar progreso de la carta
     const pData = state.playersData[jugadorId];
     const progreso = pData?.progresoCartas?.[`${carta.color}-${carta.numero}`] || 0;
     
@@ -172,9 +179,10 @@ export function abrirZoomLeaderboard(carta, playerName, jugadorId) {
     info.style.cssText = `text-align:center; color:${progreso === 3 ? '#4caf50' : '#666'}; font-size:${progreso === 3 ? '1rem' : '0.7rem'}; font-weight:${progreso === 3 ? 'bold' : 'normal'}; margin-top:5px;`;
     casillas.appendChild(info);
     
+    // Indicador de solo vista
     const msg = document.createElement('div');
-    msg.textContent = 'Solo vista';
-    msg.style.cssText = `color:#666; font-size:0.7rem; text-align:center; margin-top:5px; font-style:italic;`;
+    msg.textContent = '🔒 Solo vista';
+    msg.style.cssText = `color:#666; font-size:0.65rem; text-align:center; margin-top:6px; font-style:italic; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px; width:100%;`;
     casillas.appendChild(msg);
 }
 

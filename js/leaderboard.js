@@ -54,7 +54,7 @@ export function renderLeaderboard() {
             `;
         }
         
-        // ----- PUNTOS EXTRA DE CARTAS ESPECIALES (SOLO TAGS INDIVIDUALES) -----
+        // ----- PUNTOS EXTRA DE CARTAS ESPECIALES -----
         if (p.puntosEspeciales && p.puntosEspeciales.length > 0) {
             tieneTickets = true;
             p.puntosEspeciales.forEach(puntos => {
@@ -66,14 +66,12 @@ export function renderLeaderboard() {
             });
         }
         
-        // ----- ELIMINADO: Tag "Especiales: X" -----
-        
         if (!tieneTickets) {
             ticketsHtml += '<span class="mini-ticket vacio">Sin tickets</span>';
         }
         ticketsHtml += '</div>';
         
-        // ----- CARTAS EN MANO (5 cuadros con casillas) -----
+        // ----- CARTAS EN MANO (5 cuadros con casillas - CLICKEABLES) -----
         const pCartas = p.cartasJugador || [];
         const pProgreso = p.progresoCartas || {};
         
@@ -90,12 +88,15 @@ export function renderLeaderboard() {
             
             const progreso = carta ? (pProgreso[`${carta.color}-${carta.numero}`] || 0) : 0;
             const tieneCarta = carta !== null;
+            const esClickeable = tieneCarta && p.id !== state.myId;
             
             cartasHtml += `
-                <div class="mini-carta-mano" style="background: ${tieneCarta ? colorHex + '22' : '#2a2a2a'}; border: 2px solid ${tieneCarta ? colorHex : '#444'};">
+                <div class="mini-carta-mano" 
+                     style="background: ${tieneCarta ? colorHex + '22' : '#2a2a2a'}; border: 2px solid ${tieneCarta ? colorHex : '#444'}; ${esClickeable ? 'cursor: pointer;' : ''}"
+                     onclick="${esClickeable ? `window.abrirZoomLeaderboardDesdeCard('${p.id}', ${i})` : ''}">
                     <div class="mini-carta-casillas">
-                        ${[1, 2, 3].map(i => `
-                            <span class="mini-casilla ${(tieneCarta && i <= progreso) ? 'llena' : ''}"></span>
+                        ${[1, 2, 3].map(j => `
+                            <span class="mini-casilla ${(tieneCarta && j <= progreso) ? 'llena' : ''}"></span>
                         `).join('')}
                     </div>
                 </div>
