@@ -2,9 +2,9 @@
 // LEADERBOARD - LISTA DE JUGADORES
 // ============================================
 
-import { COLORES, state } from './config-state.js';
+import { COLORES, state, TICKETS, PUNTAJES } from './config-state.js';
 import { abrirZoomLeaderboard } from './zoom.js';
-import { getPuntajeCarta } from './juego.js';
+import { getCartasCompletadasPorColor } from './juego.js';
 
 // RENDERIZAR LEADERBOARD
 export function renderLeaderboard() {
@@ -22,66 +22,141 @@ export function renderLeaderboard() {
         const card = document.createElement('div');
         card.className = 'player-card ' + (isMe ? 'me' : '');
         
-        let cartasHtml = '<div class="mini-cartas-jugador">';
+        // ----- TICKETS Y EXTRAS EN UNA LÍNEA -----
+        let ticketsHtml = '<div class="mini-tickets">';
+        let tieneTickets = false;
+        
+        COLORES.forEach(color => {
+            if (state.tickets[color] === p.id) {
+                tieneTickets = true;
+                const colorHex = {
+                    celeste: '#4fc3f7',
+                    lima: '#aed581',
+                    naranja: '#ffb74d',
+                    purpura: '#ce93d8',
+                    rosa: '#f06292'
+                }[color] || '#666';
+                ticketsHtml += `
+                    <span class="mini-ticket" style="border-color: ${colorHex};">
+                        <span class="dot" style="background: ${colorHex};"></span>
+                        ${TICKETS[color].nombre} (+${TICKETS[color].puntaje}pts)
+                    </span>
+                `;
+            }
+        });
+        
+        if (state.bonusTicket === p.id) {
+            tieneTickets = true;
+            ticketsHtml += `
+                <span class="mini-ticket bonus">
+                    🌟 Bonus (+${TICKETS.bonus.puntaje}pts)
+                </span>
+            `;
+        }
+        
+        const especialesUsadas = p.cartasEspecialesUsadas || 0;
+        if (especialesUsadas > 0) {
+            tieneTickets = true;
+            const bonusExtra = especialesUsadas * 5;
+            ticketsHtml += `
+                <span class="mini-ticket" style="border-color: #ff9800; background: rgba(255,152,0,0.1);">
+                    ⭐ Especiales (+${bonusExtra}pts)
+                </span>
+            `;
+        }
+        
+        if (!tieneTickets) {
+            ticketsHtml += '<span class="mini-ticket vacio">Sin tickets</span>';
+        }
+        ticketsHtml += '</div>';
+        
+        // ----- CARTAS EN MANO (5 cuadros con casillas) -----
         const pCartas = p.cartasJugador || [];
         const pProgreso = p.progresoCartas || {};
         
-        if (pCartas.length === 0 || pCartas.every(c => c === null)) {
-            cartasHtml += '<span class="mini-carta vacia">Sin cartas</span>';
-        } else {
-            pCartas.forEach((carta, idx) => {
-                if (carta) {
-                    const key = `${carta.color}-${carta.numero}`;
-                    const progreso = pProgreso[key] || 0;
-                    const isCompleta = progreso === 3;
-                    const puntaje = getPuntajeCarta(carta);
-                    
-                    const colorAbr = carta.color ? carta.color.substring(0, 2) : 'E';
-                    
-                    cartasHtml += `
-                        <div class="mini-carta-jugador" 
-                             onclick="window.abrirZoomLeaderboardDesdeCard('${p.id}', ${idx})"
-                             style="cursor:pointer; border: 1px solid ${isCompleta ? '#4caf50' : '#555'}; 
-                                    padding: 4px 6px; border-radius: 4px; background: rgba(255,255,255,0.05);
-                                    min-width: 40px; text-align: center;">
-                            <div style="font-size:0.65rem; font-weight:bold;">${colorAbr}${carta.numero || ''}</div>
-                            <div style="display:flex; gap:2px; justify-content:center; margin-top:2px;">
-                                ${[1, 2, 3].map(i => `
-                                    <span style="
-                                        display:inline-block;
-                                        width:12px;
-                                        height:12px;
-                                        border-radius:2px;
-                                        background: ${i <= progreso ? '#4caf50' : 'rgba(255,255,255,0.2)'};
-                                        border: 1px solid ${i <= progreso ? '#4caf50' : 'rgba(255,255,255,0.1)'};
-                                        font-size:6px;
-                                        text-align:center;
-                                        color:${i <= progreso ? 'white' : 'transparent'};
-                                    ">${i <= progreso ? '✓' : ''}</span>
-                                `).join('')}
-                            </div>
-                            <div style="font-size:0.5rem; color:${isCompleta ? '#ffd700' : '#888'}; margin-top:1px;">
-                                ${isCompleta ? '⭐' + puntaje : progreso + '/3'}
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    cartasHtml += '<span class="mini-carta vacia">-</span>';
-                }
-            });
+        let cartasHtml = '<div class="mini-cartas-mano">';
+        for (let i = 0; i < 5; i++) {
+            const carta = pCartas[i] || null;
+            const colorHex = carta ? {
+                celeste: '#4fc3f7',
+                lima: '#aed581',
+                naranja: '#ffb74d',
+                purpura: '#ce93d8',
+                rosa: '#f06292'
+            }[carta.color] : '#444';
+            
+            const progreso = carta ? (pProgreso[`${carta.color}-${carta.numero}`] || 0) : 0;
+            const tieneCarta = carta !== null;
+            
+            cartasHtml += `
+                <div class="mini-carta-mano" style="background: ${tieneCarta ? colorHex + '22' : '#2a2a2a'}; border: 2px solid ${tieneCarta ? colorHex : '#444'};">
+                    <div class="mini-carta-casillas">
+                        ${[1, 2, 3].map(i => `
+                            <span class="mini-casilla ${(tieneCarta && i <= progreso) ? 'llena' : ''}"></span>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
         }
         cartasHtml += '</div>';
+        
+        // ----- TAGS DE COLORES EN UNA LÍNEA CON "TODAS" AL FINAL -----
+        let statsHtml = '<div class="player-stats-line">';
+        let totalCartas = 0;
+        
+        COLORES.forEach(color => {
+            const completadas = getCartasCompletadasPorColor(p.id, color);
+            const total = completadas.length;
+            
+            // Calcular puntaje de este color
+            let puntajeColor = 0;
+            completadas.forEach(num => {
+                puntajeColor += PUNTAJES[color][num - 1] || 0;
+            });
+            totalCartas += puntajeColor;
+            
+            // Contar habilidades disponibles
+            const cartasTerminadas = p.cartasTerminadas || [];
+            const cartasColor = cartasTerminadas.filter(c => c.color === color);
+            const disponibles = cartasColor.filter(c => {
+                const usada = p.habilidadesUsadas ? p.habilidadesUsadas[c.id] : true;
+                return !usada;
+            });
+            
+            const colorHex = {
+                celeste: '#4fc3f7',
+                lima: '#aed581',
+                naranja: '#ffb74d',
+                purpura: '#ce93d8',
+                rosa: '#f06292'
+            }[color] || '#666';
+            
+            statsHtml += `
+                <span class="stat-color" style="color: ${colorHex};">
+                    ● ${total} (${puntajeColor}pts) ${disponibles.length} hab.
+                </span>
+            `;
+        });
+        
+        // Tag "Todas" en gris al final
+        statsHtml += `
+            <span class="stat-todas" style="color: #888;">
+                📊 Todas: ${totalCartas}pts
+            </span>
+        `;
+        statsHtml += '</div>';
+
+        // ----- PUNTAJE TOTAL -----
+        const puntajeTotal = (p.score || 0);
 
         card.innerHTML = `
             <div class="player-card-header">
-                <span>${p.name}${isMe ? ' (Tu)' : ''}</span>
-                <span>${p.score || 0} pts</span>
+                <span>${p.name}${isMe ? ' (Tú)' : ''}</span>
+                <span>${puntajeTotal} pts</span>
             </div>
-            <div class="mini-info">
-                <span>Mazo: ${p.mazoColores ? p.mazoColores.length : 0}</span>
-                <span>${p.cartasRepartidas ? 'Repartido' : 'Esperando'}</span>
-            </div>
+            ${ticketsHtml}
             ${cartasHtml}
+            ${statsHtml}
         `;
         
         list.appendChild(card);

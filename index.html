@@ -12,7 +12,9 @@
 </head>
 <body>
 
+    <!-- ============================================ -->
     <!-- LOBBY PRINCIPAL -->
+    <!-- ============================================ -->
     <div id="lobbyModal" class="modal-overlay">
         <div class="modal-box">
             <h2>🎲 ParaDice</h2>
@@ -31,7 +33,9 @@
         </div>
     </div>
 
+    <!-- ============================================ -->
     <!-- UNIRSE A SALA -->
+    <!-- ============================================ -->
     <div id="joinModal" class="modal-overlay">
         <div class="modal-box">
             <h2>Unirse a Sala</h2>
@@ -47,27 +51,28 @@
         </div>
     </div>
 
+    <!-- ============================================ -->
     <!-- CARGANDO -->
+    <!-- ============================================ -->
     <div id="loadingModal" class="modal-overlay">
         <div class="modal-box" style="background: transparent; border: none; box-shadow: none;">
             <h2 id="loadingText">Conectando...</h2>
         </div>
     </div>
 
+    <!-- ============================================ -->
     <!-- ZOOM DE CARTA -->
+    <!-- ============================================ -->
     <div id="zoomModal" class="modal-overlay" style="display: none; z-index: 3000;">
         <div class="modal-box" style="max-width: 520px; background: rgba(0,0,0,0.95);">
             <div style="text-align: right; margin-bottom: 10px;">
-                <button onclick="window.cerrarZoom()" style="background: transparent; border: none; color: white; font-size: 2rem; cursor: pointer; padding: 0 10px;">✕</button>
+                <button onclick="window.cerrarZoom()" style="background: transparent; border: none; color: white; font-size: 2rem; cursor: pointer; padding: 0 10px;">X</button>
             </div>
             <div id="zoomContent" style="display: flex; gap: 20px; justify-content: center; align-items: center; min-height: 200px; flex-wrap: wrap;">
-                <!-- Carta ampliada -->
                 <div style="flex: 0 0 auto;">
                     <img id="zoomImage" src="" alt="Carta ampliada" style="max-width: 180px; max-height: 250px; border-radius: 8px; display: block;">
                 </div>
-                <!-- Casillas verticales -->
                 <div id="zoomCasillas" style="display: flex; flex-direction: column; gap: 8px; min-width: 50px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); align-items: center;">
-                    <!-- Se generan dinámicamente -->
                 </div>
             </div>
             <div id="zoomText" style="text-align: center; color: #aaa; margin-top: 10px; font-size: 0.9rem;"></div>
@@ -75,80 +80,110 @@
         </div>
     </div>
 
+    <!-- ============================================ -->
+    <!-- MODAL DE HABILIDAD -->
+    <!-- ============================================ -->
+    <div id="habilidadModal" class="modal-overlay" style="display: none; z-index: 4000;">
+        <div class="modal-box" style="max-width: 400px; background: rgba(0,0,0,0.95);">
+            <div style="text-align: right; margin-bottom: 10px;">
+                <button onclick="window.cerrarHabilidad()" style="background: transparent; border: none; color: white; font-size: 2rem; cursor: pointer; padding: 0 10px;">X</button>
+            </div>
+            <div id="habilidadContent">
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL ESPECIAL -->
+    <!-- ============================================ -->
+    <div id="especialModal" class="modal-overlay" style="display: none; z-index: 4000;">
+        <div class="modal-box" style="max-width: 450px; background: rgba(0,0,0,0.95);">
+            <div style="text-align: right; margin-bottom: 10px;">
+                <button onclick="window.cerrarEspecial()" style="background: transparent; border: none; color: white; font-size: 2rem; cursor: pointer; padding: 0 10px;">X</button>
+            </div>
+            <div id="especialContent">
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
     <!-- UI DEL JUEGO -->
+    <!-- ============================================ -->
     <header>
         <h1>🎲 ParaDice</h1>
         <div id="roomInfoDisplay" class="room-info" style="display: none;"></div>
     </header>
 
     <div class="app-container">
-        <div class="game-layout">
-            <!-- Almacen (Tablero) -->
+        <!-- AREA DE JUEGO -->
+        <div class="game-area">
+            <!-- Tablero -->
             <div class="board-container">
                 <div class="board" id="game-board"></div>
             </div>
 
-            <!-- Cartas visibles en columna -->
-            <div class="cartas-columna">
-                <div class="cartas-label">Cartas Visibles</div>
-                <div id="cartas-visibles-container">
-                    <div class="carta-visible vacia" data-index="0">Vacío</div>
-                    <div class="carta-visible vacia" data-index="1">Vacío</div>
-                    <div class="carta-visible vacia" data-index="2">Vacío</div>
-                    <div class="carta-visible vacia" data-index="3">Vacío</div>
+            <!-- Cartas visibles horizontales -->
+            <div class="cartas-visibles-horizontal">
+                <div class="cartas-label">Visibles</div>
+                <div id="cartas-visibles-container" class="cartas-horizontal">
+                    <div class="carta-visible vacia" data-index="0">Vacio</div>
+                    <div class="carta-visible vacia" data-index="1">Vacio</div>
+                    <div class="carta-visible vacia" data-index="2">Vacio</div>
+                    <div class="carta-visible vacia" data-index="3">Vacio</div>
                 </div>
-                <div class="mazos-info">
-                    <div class="mazo-info">
-                        <span>Mazo Colores</span>
-                        <span id="mazo-colores-count">45</span>
-                    </div>
-                    <div class="mazo-info">
-                        <span>Mazo Especial</span>
-                        <span id="mazo-especial-count">9</span>
-                    </div>
+            </div>
+
+            <!-- Controles -->
+            <div class="controles-juego">
+                <button class="btn-control btn-repartir" onclick="window.repartirCartas()">Repartir Cartas</button>
+                <button class="btn-control btn-especial" onclick="window.usarCartaEspecial()">Carta Especial</button>
+                <button class="btn-control btn-reiniciar" onclick="window.reiniciarTablero()">Reiniciar</button>
+                <div class="info-mazo">
+                    <span>Restantes: <strong id="mazo-restantes">45</strong></span>
                 </div>
-                <button class="modal-btn btn-primary btn-repartir" onclick="window.repartirCartas()">Repartir Cartas</button>
+                <div class="info-mazo">
+                    <span>Especiales: <strong id="mazo-especial-restantes">9</strong></span>
+                </div>
             </div>
         </div>
 
-        <!-- Area de Cartas del Jugador -->
+        <!-- TUS CARTAS -->
         <div class="jugador-cartas-container">
-            <div class="jugador-cartas-label">Tus Cartas</div>
-            <div id="jugador-cartas-container">
-                <div class="carta-jugador vacia" data-index="0">Vacío</div>
-                <div class="carta-jugador vacia" data-index="1">Vacío</div>
-                <div class="carta-jugador vacia" data-index="2">Vacío</div>
-                <div class="carta-jugador vacia" data-index="3">Vacío</div>
+            <div class="cartas-header">
+                <span class="header-label">Mis Cartas</span>
+                <span class="header-info" id="cartas-info">Mano: 0/5 | Terminadas: 0</span>
+            </div>
+            
+            <div class="cartas-grid">
+                <!-- Mi Mano -->
+                <div id="jugador-cartas-container" class="cartas-mano">
+                    <div class="carta-jugador vacia" data-index="0">Vacio</div>
+                    <div class="carta-jugador vacia" data-index="1">Vacio</div>
+                    <div class="carta-jugador vacia" data-index="2">Vacio</div>
+                    <div class="carta-jugador vacia" data-index="3">Vacio</div>
+                    <div class="carta-jugador vacia" data-index="4">Vacio</div>
+                </div>
+
+                <!-- Terminadas -->
+                <div id="terminadas-container" class="terminadas-compact">
+                    <!-- Generado por JavaScript -->
+                </div>
             </div>
         </div>
 
+        <!-- PANEL LATERAL -->
         <div class="side-panel">
-            <!-- Estado del juego -->
+            <!-- Panel de Estado -->
             <div class="status-panel">
-                <div class="status-grid">
-                    <div class="status-item">
-                        <span class="status-label">Marcadas</span>
-                        <span id="marcadas-count">0</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Puntaje</span>
-                        <span id="score-total">0</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Estado</span>
-                        <span id="estado-juego">Esperando</span>
-                    </div>
-                </div>
-                
-                <div class="controls">
-                    <button class="modal-btn btn-outline" onclick="window.reiniciarTablero()">Reiniciar</button>
+                <div id="status-panel-content" class="status-grid">
+                    <!-- Generado por JavaScript -->
                 </div>
             </div>
 
             <!-- Jugadores (plegable) -->
             <div class="leaderboard" id="leaderboardPanel">
                 <div class="leaderboard-header" onclick="window.toggleLeaderboard()">
-                    <h3>🏆 Jugadores</h3>
+                    <h3>Jugadores</h3>
                     <span id="toggleIcon">▲</span>
                 </div>
                 <div id="leaderboardContent" class="leaderboard-content">
@@ -158,10 +193,10 @@
         </div>
     </div>
 
-    <!-- MQTT CLIENT -->
+    <!-- ============================================ -->
+    <!-- SCRIPTS -->
+    <!-- ============================================ -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-    
-    <!-- MÓDULOS JS -->
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

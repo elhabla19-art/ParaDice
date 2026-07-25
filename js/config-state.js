@@ -30,6 +30,63 @@ export const PUNTAJES = {
     rosa: [15, 15, 10, 10, 10, 20, 20, 15, 20]
 };
 
+// HABILIDADES POR COLOR
+export const HABILIDADES = {
+    celeste: {
+        nombre: 'Escoge Fila',
+        descripcion: 'Escoge cualquier fila para jugar',
+        icono: '🎯',
+        color: '#4fc3f7'
+    },
+    lima: {
+        nombre: 'Carta Especial',
+        descripcion: 'Toma una carta del mazo Especial',
+        icono: '🃏',
+        color: '#aed581'
+    },
+    naranja: {
+        nombre: 'Cambia Valor',
+        descripcion: 'Cambia el valor de un dado al que desees',
+        icono: '🎲',
+        color: '#ffb74d'
+    },
+    purpura: {
+        nombre: 'Cambia Color',
+        descripcion: 'Cambia el color de un dado al que desees',
+        icono: '🌈',
+        color: '#ce93d8'
+    },
+    rosa: {
+        nombre: 'Escoge Dado',
+        descripcion: 'Escoge un dado de cualquier columna',
+        icono: '🎯',
+        color: '#f06292'
+    }
+};
+
+// CARTAS ESPECIALES
+export const CARTAS_ESPECIALES = [
+    { id: 'especial-1', tipo: 'mover_ficha', descripcion: 'Mueve ficha 1 paso (adelante/atrás)', icono: '↕️' },
+    { id: 'especial-2', tipo: 'mover_ficha', descripcion: 'Mueve ficha 1 paso (adelante/atrás)', icono: '↕️' },
+    { id: 'especial-3', tipo: 'turno_extra', descripcion: 'Turno Extra', icono: '⏭️' },
+    { id: 'especial-4', tipo: 'recuperar_habilidad', descripcion: 'Recupera un poder ya utilizado', icono: '🔄' },
+    { id: 'especial-5', tipo: 'tomar_dado', descripcion: 'Toma cualquier dado de juego', icono: '🎲' },
+    { id: 'especial-6', tipo: 'puntos', descripcion: '+5 puntos', icono: '⭐', puntos: 5 },
+    { id: 'especial-7', tipo: 'puntos', descripcion: '+5 puntos', icono: '⭐', puntos: 5 },
+    { id: 'especial-8', tipo: 'puntos', descripcion: '+5 puntos', icono: '⭐', puntos: 5 },
+    { id: 'especial-9', tipo: 'puntos', descripcion: '+10 puntos', icono: '⭐', puntos: 10 }
+];
+
+// Tickets
+export const TICKETS = {
+    celeste: { nombre: 'Ticket Celeste', puntaje: 10, icono: 'Imagenes/Tickets/celeste.png' },
+    lima: { nombre: 'Ticket Lima', puntaje: 10, icono: 'Imagenes/Tickets/lima.png' },
+    naranja: { nombre: 'Ticket Naranja', puntaje: 10, icono: 'Imagenes/Tickets/naranja.png' },
+    purpura: { nombre: 'Ticket Purpura', puntaje: 10, icono: 'Imagenes/Tickets/purpura.png' },
+    rosa: { nombre: 'Ticket Rosa', puntaje: 10, icono: 'Imagenes/Tickets/rosa.png' },
+    bonus: { nombre: 'Ticket Bonus', puntaje: 20, icono: 'Imagenes/Tickets/Bonus.png' }
+};
+
 // Estado del juego
 export const state = {
     // Estado local
@@ -39,17 +96,32 @@ export const state = {
     mazoEspecial: [],
     cartasVisibles: [],
     cartasJugador: [],
+    cartasTerminadas: [],
     almacen: {},
     cartasRepartidas: false,
     cartaSeleccionada: null,
     
-    // Tablero: cada color tiene una ficha en una posición (0-5)
+    // Tablero
     fichas: {},
     tableroGlobal: {},
     
     // Progreso de cartas
     progresoCarta: {},
     zoomModo: 'jugador',
+    
+    // Habilidades usadas
+    habilidadesUsadas: {},
+    
+    // Mazo Especial
+    mazoEspecialDisponible: [],
+    cartaEspecialActual: null,
+    modoEspecial: null, // 'mover_ficha', 'recuperar_habilidad', 'puntos'
+    cartasEspecialesUsadas: 0,
+    
+    // Tickets
+    tickets: {},
+    bonusTicket: null,
+    bonusReclamado: false,
     
     // MQTT
     mqttClient: null,
@@ -64,7 +136,20 @@ export function initState() {
     COLORES.forEach(color => {
         state.almacen[color] = Array(6).fill(null);
         state.tableroGlobal[color] = Array(6).fill(false);
-        state.fichas[color] = 0; // Empieza en casilla 1 (índice 0)
+        state.fichas[color] = 0;
+        state.tickets[color] = null;
     });
+    state.bonusTicket = null;
+    state.bonusReclamado = false;
     state.progresoCarta = {};
+    state.cartasJugador = Array(5).fill(null);
+    state.cartasTerminadas = [];
+    state.habilidadesUsadas = {};
+    state.mazoEspecialDisponible = [];
+    state.cartaEspecialActual = null;
+    state.modoEspecial = null;
+    state.cartasEspecialesUsadas = 0;
+    state.myTotalScore = 0;
+    state.cartasRepartidas = false;
+    state.moveHistory = [];
 }

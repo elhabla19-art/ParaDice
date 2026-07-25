@@ -2,12 +2,14 @@
 // MAZOS Y TABLERO
 // ============================================
 
-import { COLORES, state } from './config-state.js';
+import { COLORES, state, CARTAS_ESPECIALES } from './config-state.js';
 import { mezclarArray, mostrarMensaje } from './utils.js';
 import { abrirZoomJugador, abrirZoomVisible } from './zoom.js';
+import { getHabilidadCarta, isHabilidadUsada, usarHabilidad } from './juego.js';
 
 // MAZOS
 export function generarMazos() {
+    // Mazo de colores
     const mazoColoresTemp = [];
     COLORES.forEach(color => {
         for (let i = 1; i <= 9; i++) {
@@ -23,19 +25,13 @@ export function generarMazos() {
     });
     state.mazoColores = mezclarArray(mazoColoresTemp);
 
-    const mazoEspecialTemp = [];
-    for (let i = 1; i <= 9; i++) {
-        mazoEspecialTemp.push({
-            id: `especial-${i}`,
-            tipo: 'especial',
-            numero: i,
-            imagen: `Imagenes/Especial/Especial${i}.png`
-        });
-    }
-    state.mazoEspecial = mezclarArray(mazoEspecialTemp);
+    // Mazo Especial - Crear copia de las cartas especiales
+    state.mazoEspecialDisponible = CARTAS_ESPECIALES.map(c => ({ ...c }));
+    state.mazoEspecialDisponible = mezclarArray(state.mazoEspecialDisponible);
 
     state.cartasVisibles = Array(4).fill(null);
-    state.cartasJugador = Array(4).fill(null);
+    state.cartasJugador = Array(5).fill(null);
+    state.cartasTerminadas = [];
     state.cartasRepartidas = false;
     
     COLORES.forEach(color => {
@@ -44,7 +40,18 @@ export function generarMazos() {
     });
 }
 
-// RENDERIZAR TABLERO
+function getColorFicha(color) {
+    const colores = {
+        celeste: '#0288d1',
+        lima: '#33691e',
+        naranja: '#e65100',
+        purpura: '#4a148c',
+        rosa: '#880e4f'
+    };
+    return colores[color] || '#333';
+}
+
+// RENDERIZAR TABLERO (sin marcas de casillas completadas)
 export function renderBoard() {
     const boardElement = document.getElementById('game-board');
     if (!boardElement) return;
@@ -62,18 +69,16 @@ export function renderBoard() {
             box.dataset.color = color;
             box.dataset.index = i;
             
-            // Verificar si la ficha está en esta casilla (posición 0 = casilla 1)
             const fichaPos = state.fichas[color] || 0;
             if (i === fichaPos) {
                 box.classList.add('ficha-actual');
                 
-                // Ficha más grande y centrada
                 const fichaIndicador = document.createElement('div');
                 fichaIndicador.className = 'ficha-indicador';
                 fichaIndicador.style.cssText = `
                     position: absolute;
-                    width: 70%;
-                    height: 70%;
+                    width: 65%;
+                    height: 65%;
                     border-radius: 50%;
                     background: ${getColorFicha(color)};
                     box-shadow: 0 0 20px ${getColorFicha(color)};
@@ -85,11 +90,6 @@ export function renderBoard() {
                     z-index: 2;
                 `;
                 box.appendChild(fichaIndicador);
-            }
-            
-            // Si la casilla está marcada (completada), mostrar check
-            if (state.tableroGlobal[color] && state.tableroGlobal[color][i]) {
-                box.classList.add('marcada-tablero');
             }
             
             box.addEventListener('click', () => handleBoxClick(color, i));
@@ -104,19 +104,7 @@ export function renderBoard() {
     updateVisuals();
 }
 
-// Función para obtener color de ficha (más oscuro que el color de la fila)
-function getColorFicha(color) {
-    const colores = {
-        celeste: '#0288d1',    // Azul oscuro
-        lima: '#33691e',       // Verde oscuro
-        naranja: '#e65100',    // Naranja oscuro
-        purpura: '#4a148c',    // Púrpura oscuro
-        rosa: '#880e4f'        // Rosa oscuro
-    };
-    return colores[color] || '#333';
-}
-
-// RENDERIZAR CARTAS VISIBLES
+// RENDERIZAR CARTAS VISIBLES (horizontales)
 export function renderCartasVisibles() {
     const container = document.getElementById('cartas-visibles-container');
     if (!container) return;
@@ -139,7 +127,7 @@ export function renderCartasVisibles() {
             img.onerror = function() {
                 this.style.display = 'none';
                 div.textContent = `${carta.color || 'Especial'} ${carta.numero || ''}`;
-                div.style.fontSize = '0.7rem';
+                div.style.fontSize = '0.5rem';
                 div.style.textAlign = 'center';
                 div.style.color = '#888';
             };
@@ -149,104 +137,151 @@ export function renderCartasVisibles() {
             div.style.cursor = 'pointer';
             div.addEventListener('click', () => abrirZoomVisible(carta, index));
         } else {
-            div.textContent = 'Vacío';
+            div.textContent = 'Vacio';
             div.style.color = '#555';
-            div.style.fontSize = '0.7rem';
+            div.style.fontSize = '0.5rem';
             div.classList.add('vacia');
             div.style.cursor = 'default';
         }
     });
 }
 
-// RENDERIZAR CARTAS DEL JUGADOR
+// RENDERIZAR CARTAS DEL JUGADOR (Mano + Terminadas)
 export function renderCartasJugador() {
-    const container = document.getElementById('jugador-cartas-container');
-    if (!container) return;
-    
-    const cartasElements = container.querySelectorAll('.carta-jugador');
-    
-    state.cartasJugador.forEach((carta, index) => {
-        const div = cartasElements[index];
-        if (!div) return;
+    // Renderizar mano (5 cartas)
+    const manoContainer = document.getElementById('jugador-cartas-container');
+    if (manoContainer) {
+        manoContainer.innerHTML = '';
         
-        div.innerHTML = '';
-        div.className = 'carta-jugador';
-        div.dataset.index = index;
-        
-        if (carta) {
-            if (!state.tableroGlobal[carta.color]) {
-                state.tableroGlobal[carta.color] = Array(6).fill(false);
-            }
+        state.cartasJugador.forEach((carta, index) => {
+            const div = document.createElement('div');
+            div.className = 'carta-jugador';
+            div.dataset.index = index;
             
-            const img = document.createElement('img');
-            img.src = carta.imagen || '';
-            img.alt = `Carta jugador ${index+1}`;
-            img.draggable = false;
-            img.onerror = function() {
-                this.style.display = 'none';
-                div.textContent = `${carta.color || 'Especial'} ${carta.numero || ''}`;
-                div.style.fontSize = '0.7rem';
-                div.style.textAlign = 'center';
-                div.style.color = '#888';
-            };
-            div.appendChild(img);
-            div.style.background = 'rgba(255,255,255,0.1)';
-            div.style.borderColor = '#ffb74d';
-            div.style.cursor = 'pointer';
-            
-            // Progreso de la carta
-            const key = `${carta.color}-${carta.numero}`;
-            const progreso = state.progresoCarta[key] || 0;
-            
-            const progressDiv = document.createElement('div');
-            progressDiv.className = 'carta-progreso';
-            progressDiv.textContent = progreso === 3 ? '✓' : `${progreso}/3`;
-            progressDiv.style.cssText = `
-                position: absolute;
-                bottom: 4px;
-                right: 4px;
-                font-size: 0.6rem;
-                color: ${progreso === 3 ? '#4caf50' : '#888'};
-                background: rgba(0,0,0,0.8);
-                padding: 1px 6px;
-                border-radius: 10px;
-                font-weight: bold;
-                pointer-events: none;
-            `;
-            div.style.position = 'relative';
-            div.appendChild(progressDiv);
-            
-            if (progreso === 3) {
-                div.style.borderColor = '#4caf50';
-                div.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.2)';
-                div.title = '¡Carta completada!';
-            } else if (progreso > 0) {
+            if (carta) {
+                const img = document.createElement('img');
+                img.src = carta.imagen || '';
+                img.alt = `Carta ${index+1}`;
+                img.draggable = false;
+                img.onerror = function() {
+                    this.style.display = 'none';
+                    div.textContent = `${carta.color || 'Especial'} ${carta.numero || ''}`;
+                    div.style.fontSize = '0.5rem';
+                    div.style.textAlign = 'center';
+                    div.style.color = '#888';
+                };
+                div.appendChild(img);
+                div.style.background = 'rgba(255,255,255,0.1)';
                 div.style.borderColor = '#ffb74d';
-                div.style.boxShadow = '0 0 10px rgba(255, 183, 77, 0.2)';
-                div.title = `Progreso: ${progreso}/3`;
+                div.style.cursor = 'pointer';
+                
+                const key = `${carta.color}-${carta.numero}`;
+                const progreso = state.progresoCarta[key] || 0;
+                
+                const progressDiv = document.createElement('div');
+                progressDiv.className = 'carta-progreso';
+                progressDiv.textContent = `${progreso}/3`;
+                progressDiv.style.cssText = `
+                    position: absolute;
+                    bottom: 3px;
+                    right: 3px;
+                    font-size: 0.5rem;
+                    color: ${progreso === 3 ? '#4caf50' : '#888'};
+                    background: rgba(0,0,0,0.8);
+                    padding: 1px 5px;
+                    border-radius: 6px;
+                    font-weight: bold;
+                    pointer-events: none;
+                `;
+                div.style.position = 'relative';
+                div.appendChild(progressDiv);
+                
+                div.addEventListener('click', () => abrirZoomJugador(carta));
+            } else {
+                div.textContent = 'Vacio';
+                div.style.color = '#555';
+                div.style.fontSize = '0.45rem';
+                div.classList.add('vacia');
+                div.style.cursor = 'default';
             }
             
-            div.addEventListener('click', () => abrirZoomJugador(carta));
-        } else {
-            div.textContent = 'Vacío';
-            div.style.color = '#555';
-            div.style.fontSize = '0.7rem';
-            div.classList.add('vacia');
-            div.style.cursor = 'default';
+            manoContainer.appendChild(div);
+        });
+    }
+    
+    // Renderizar terminadas - Siempre con todos los colores (0 inicial)
+    const terminadasContainer = document.getElementById('terminadas-container');
+    if (!terminadasContainer) return;
+    
+    terminadasContainer.innerHTML = '';
+    
+    // Agrupar cartas terminadas por color
+    const coloresMap = {};
+    state.cartasTerminadas.forEach(carta => {
+        if (!coloresMap[carta.color]) {
+            coloresMap[carta.color] = [];
         }
+        coloresMap[carta.color].push(carta);
     });
+    
+    const colorHex = {
+        celeste: '#4fc3f7',
+        lima: '#aed581',
+        naranja: '#ffb74d',
+        purpura: '#ce93d8',
+        rosa: '#f06292'
+    };
+    
+    // Mostrar todos los colores, incluso con 0
+    COLORES.forEach(color => {
+        const cartas = coloresMap[color] || [];
+        const total = cartas.length;
+        const disponibles = cartas.filter(c => state.habilidadesUsadas[c.id] !== true);
+        const colorHexValue = colorHex[color] || '#888';
+        
+        const item = document.createElement('div');
+        item.className = 'terminada-item';
+        
+        const btnHtml = disponibles.length > 0 ? 
+            `<button class="btn-activar" onclick="window.usarHabilidadPorColor('${color}')">Activar</button>` :
+            `<button class="btn-activar usado" disabled>Usada</button>`;
+        
+        // Si no hay cartas, mostrar 0 y sin botón
+        const displayHtml = total === 0 ? 
+            `<span class="vacio-text">0</span>` :
+            `<span class="info">
+                <span class="num">${total}</span>
+                <span>terminadas</span>
+                <span style="color: #4caf50;">${disponibles.length} disp.</span>
+            </span>`;
+        
+        item.innerHTML = `
+            <span class="dot" style="background: ${colorHexValue};"></span>
+            ${total === 0 ? `<span class="vacio-text">${color.substring(0,2)}: 0</span>` : displayHtml}
+            ${total > 0 ? btnHtml : ''}
+        `;
+        
+        terminadasContainer.appendChild(item);
+    });
+}
+
+// USAR HABILIDAD POR COLOR
+export function usarHabilidadPorColor(color) {
+    const carta = state.cartasTerminadas.find(c => c.color === color && state.habilidadesUsadas[c.id] !== true);
+    if (carta) {
+        usarHabilidad(carta);
+    }
 }
 
 // ACTUALIZACIÓN VISUAL
 export function updateVisuals() {
-    // Actualizar contadores
     const mazoColoresCount = document.getElementById('mazo-colores-count');
     const mazoEspecialCount = document.getElementById('mazo-especial-count');
     const marcadasCount = document.getElementById('marcadas-count');
     const estadoJuego = document.getElementById('estado-juego');
     
     if (mazoColoresCount) mazoColoresCount.textContent = state.mazoColores.length;
-    if (mazoEspecialCount) mazoEspecialCount.textContent = state.mazoEspecial.length;
+    if (mazoEspecialCount) mazoEspecialCount.textContent = state.mazoEspecialDisponible.length;
     
     let totalMarcadas = 0;
     COLORES.forEach(color => {
@@ -264,7 +299,9 @@ export function updateVisuals() {
 
 // MANEJADOR DE CLICK EN TABLERO
 export function handleBoxClick(color, index) {
-    // No se permite marcar directamente desde el tablero
     const fichaPos = state.fichas[color] || 0;
-    console.warn(`Ficha de ${color} está en casilla ${fichaPos}`);
+    console.log(`Ficha de ${color} esta en casilla ${fichaPos + 1}`);
 }
+
+// EXPONER FUNCIONES PARA WINDOW
+window.usarHabilidadPorColor = usarHabilidadPorColor;
