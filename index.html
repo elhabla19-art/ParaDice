@@ -17,7 +17,7 @@
     <!-- ============================================ -->
     <div id="lobbyModal" class="modal-overlay">
         <div class="modal-box">
-            <h2>🎲 ParaDice</h2>
+            <h2>Dado</h2>
             <p>Selecciona un modo de juego</p>
             <div class="input-group">
                 <label>Tu Nombre:</label>
@@ -121,7 +121,7 @@
     <!-- UI DEL JUEGO -->
     <!-- ============================================ -->
     <header>
-        <h1>🎲 ParaDice</h1>
+        <h1>Dado</h1>
         <div id="roomInfoDisplay" class="room-info" style="display: none;"></div>
     </header>
 
@@ -193,7 +193,13 @@
             <div class="leaderboard" id="leaderboardPanel">
                 <div class="leaderboard-header" onclick="window.toggleLeaderboard()">
                     <h3>Jugadores</h3>
-                    <span id="toggleIcon">▲</span>
+                    <div class="header-controls">
+                        <button id="btnRefrescar" onclick="event.stopPropagation(); window.refrescarSincronizacion();" 
+                                class="btn-refrescar" title="Sincronizar con otros jugadores">
+                            R
+                        </button>
+                        <span id="toggleIcon">▲</span>
+                    </div>
                 </div>
                 <div id="leaderboardContent" class="leaderboard-content">
                     <div id="playersList"></div>

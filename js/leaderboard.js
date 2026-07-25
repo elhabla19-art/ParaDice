@@ -5,6 +5,11 @@
 import { COLORES, state, TICKETS, PUNTAJES } from './config-state.js';
 import { abrirZoomLeaderboard } from './zoom.js';
 import { getCartasCompletadasPorColor } from './juego.js';
+import { broadcastScore, broadcastTablero, broadcastTickets, broadcastMazo } from './mqtt.js';
+import { calculateScores } from './juego.js';
+import { renderBoard, updateVisuals, renderCartasVisibles, renderCartasJugador } from './mazos-tablero.js';
+import { renderStatusPanel } from './panel.js';
+import { mostrarMensaje } from './utils.js';
 
 // RENDERIZAR LEADERBOARD
 export function renderLeaderboard() {
@@ -49,7 +54,7 @@ export function renderLeaderboard() {
             tieneTickets = true;
             ticketsHtml += `
                 <span class="mini-ticket bonus">
-                    🌟 Bonus (+${TICKETS.bonus.puntaje}pts)
+                    Bonus (+${TICKETS.bonus.puntaje}pts)
                 </span>
             `;
         }
@@ -140,18 +145,18 @@ export function renderLeaderboard() {
             if (resultadosFinales[color]) {
                 const data = resultadosFinales[color];
                 if (data.esPrimero) {
-                    // Primer color en meta → 0 pts (solo tachado)
+                    // Primer color en meta -> 0 pts (solo tachado)
                     puntajeMostrar = 0;
                     decoracion = 'text-decoration: line-through;';
                 } else if (data.esDoble) {
-                    // Color más atrás → x2 (SOLO CARTAS, sin ticket)
+                    // Color más atrás -> x2 (SOLO CARTAS, sin ticket)
                     puntajeMostrar = puntajeBase * 2;
                 } else {
-                    // Resto → normal (SOLO CARTAS)
+                    // Resto -> normal (SOLO CARTAS)
                     puntajeMostrar = puntajeBase;
                 }
             } else if (color === primerColor) {
-                // Primer color en meta → 0 pts (solo tachado)
+                // Primer color en meta -> 0 pts (solo tachado)
                 puntajeMostrar = 0;
                 decoracion = 'text-decoration: line-through;';
             }
@@ -185,17 +190,33 @@ export function renderLeaderboard() {
         // Tag "Todas" en gris al final
         statsHtml += `
             <span class="stat-todas" style="color: #888;">
-                📊 Todas: ${totalCartas}pts
+                Todas: ${totalCartas}pts
             </span>
         `;
         statsHtml += '</div>';
 
         // ----- PUNTAJE TOTAL -----
-        const puntajeTotal = (p.score || 0);
+        // Calcular manualmente: Todas + Tickets + Extras
+        let totalTickets = 0;
+        COLORES.forEach(color => {
+            if (state.tickets[color] === p.id) {
+                totalTickets += TICKETS[color].puntaje || 0;
+            }
+        });
+        if (state.bonusTicket === p.id) {
+            totalTickets += TICKETS.bonus.puntaje || 0;
+        }
+
+        let totalExtras = 0;
+        if (p.puntosEspeciales && p.puntosEspeciales.length > 0) {
+            totalExtras = p.puntosEspeciales.reduce((sum, pts) => sum + pts, 0);
+        }
+
+        const puntajeTotal = totalCartas + totalTickets + totalExtras;
 
         card.innerHTML = `
             <div class="player-card-header">
-                <span>${p.name}${isMe ? ' (Tú)' : ''}</span>
+                <span>${p.name}${isMe ? ' (Tu)' : ''}</span>
                 <span>${puntajeTotal} pts</span>
             </div>
             ${ticketsHtml}
@@ -230,4 +251,50 @@ export function abrirZoomLeaderboardDesdeCard(playerId, cartaIndex) {
     }
     const carta = player.cartasJugador[cartaIndex];
     abrirZoomLeaderboard(carta, player.name, playerId);
+}
+
+// ============================================
+// REFRESCAR SINCRONIZACION
+// ============================================
+
+export function refrescarSincronizacion() {
+    // Si está en sala, enviar broadcast
+    if (state.currentRoom) {
+        // Mostrar feedback visual
+        const btn = document.getElementById('btnRefrescar');
+        if (btn) btn.classList.add('refrescando');
+        
+        // Forzar sincronización completa
+        broadcastScore('sync');
+        broadcastTablero();
+        broadcastTickets();
+        broadcastMazo();
+        
+        // Recalcular puntajes locales
+        calculateScores();
+        
+        // Refrescar toda la UI
+        renderBoard();
+        updateVisuals();
+        renderCartasVisibles();
+        renderCartasJugador();
+        renderStatusPanel();
+        renderLeaderboard();
+        
+        setTimeout(() => {
+            if (btn) btn.classList.remove('refrescando');
+        }, 600);
+        
+        mostrarMensaje('Sincronizacion forzada completada', 'info');
+    } else {
+        // Modo solo: solo refrescar UI local
+        calculateScores();
+        renderBoard();
+        updateVisuals();
+        renderCartasVisibles();
+        renderCartasJugador();
+        renderStatusPanel();
+        renderLeaderboard();
+        mostrarMensaje('Vista actualizada', 'info');
+    }
 }

@@ -25,7 +25,7 @@ import {
     createRoom, joinRoom,
     setRenderStatusPanel
 } from './mqtt.js';
-import { toggleLeaderboard, abrirZoomLeaderboardDesdeCard, renderLeaderboard } from './leaderboard.js';
+import { toggleLeaderboard, abrirZoomLeaderboardDesdeCard, renderLeaderboard, refrescarSincronizacion } from './leaderboard.js';
 import { renderStatusPanel } from './panel.js';
 
 // ============================================
@@ -75,6 +75,7 @@ function init() {
     window.actualizarBotonEspecial = actualizarBotonEspecial;
     window.renderStatusPanel = renderStatusPanel;
     window.cerrarPodio = cerrarPodio;
+    window.refrescarSincronizacion = refrescarSincronizacion;
     
     console.log('ParaDice - Iniciado');
     console.log(`Cartas en mazo: ${state.mazoColores.length}`);
@@ -144,5 +145,6 @@ export {
     usarHabilidadDesdeZoom,
     actualizarBotonEspecial,
     renderStatusPanel,
-    cerrarPodio
+    cerrarPodio,
+    refrescarSincronizacion
 };
