@@ -6,7 +6,7 @@ import { COLORES, state, PUNTAJES, TICKETS, HABILIDADES, initState } from './con
 import { mostrarMensaje } from './utils.js';
 import { renderCartasVisibles, renderCartasJugador, updateVisuals, renderBoard, generarMazos } from './mazos-tablero.js';
 import { cerrarZoom, actualizarZoomJugador } from './zoom.js';
-import { broadcastScore, broadcastTablero, broadcastMazo, broadcastTickets } from './mqtt.js';
+import { broadcastScore, broadcastTablero, broadcastMazo, broadcastTickets, broadcastJuegoTerminado } from './mqtt.js';
 import { renderLeaderboard } from './leaderboard.js';
 import { renderStatusPanel } from './panel.js';
 
@@ -91,6 +91,25 @@ export function getCartasCompletadasPorColor(jugadorId, color) {
 }
 
 // ============================================
+// OBTENER PUNTAJE DE CARTAS DE UN COLOR (sin tickets)
+// ============================================
+
+function getPuntajeCartasColor(jugadorId, color) {
+    const player = state.playersData[jugadorId];
+    if (!player || !player.progresoCartas) return 0;
+    
+    let puntaje = 0;
+    for (let i = 1; i <= 9; i++) {
+        const key = `${color}-${i}`;
+        const data = player.progresoCartas[key];
+        if (data && data.completada === true) {
+            puntaje += PUNTAJES[color][i - 1] || 0;
+        }
+    }
+    return puntaje;
+}
+
+// ============================================
 // TICKETS
 // ============================================
 
@@ -126,28 +145,46 @@ function verificarTicketsColor() {
 }
 
 function verificarTicketBonus(jugadorId) {
+    // Si ya se reclamó el bonus, no hacer nada
     if (state.bonusReclamado) return false;
     
     const player = state.playersData[jugadorId];
     if (!player || !player.progresoCartas) return false;
     
+    // Contar cuántos COLORES DIFERENTES tienen al menos 1 carta completada
     let coloresCompletos = 0;
     COLORES.forEach(color => {
+        let tieneCartaCompletada = false;
         for (let i = 1; i <= 9; i++) {
             const key = `${color}-${i}`;
             const data = player.progresoCartas[key];
             if (data && data.completada === true) {
-                coloresCompletos++;
-                break;
+                tieneCartaCompletada = true;
+                break; // Solo necesitamos saber si tiene al menos 1 carta de este color
             }
+        }
+        if (tieneCartaCompletada) {
+            coloresCompletos++;
         }
     });
     
+    // Necesita los 5 colores para obtener el bonus
     if (coloresCompletos >= 5) {
         state.bonusTicket = jugadorId;
         state.bonusReclamado = true;
         const nombreJugador = state.playersData[jugadorId]?.name || 'Jugador';
-        mostrarMensaje(`Ticket BONUS (+${TICKETS.bonus.puntaje} pts) obtenido por ${nombreJugador}`, 'success');
+        mostrarMensaje(`🎟️ Ticket BONUS (+${TICKETS.bonus.puntaje} pts) obtenido por ${nombreJugador}`, 'success');
+        
+        // Broadcast inmediato
+        if (state.currentRoom) {
+            broadcastTickets();
+        }
+        
+        // Recalcular scores
+        calculateScores();
+        renderLeaderboard();
+        renderStatusPanel();
+        
         return true;
     }
     return false;
@@ -156,32 +193,39 @@ function verificarTicketBonus(jugadorId) {
 function actualizarPuntajesConTickets() {
     verificarTicketsColor();
     
+    const primerColor = state.coloresMeta?.[0] || null;
+    
     Object.keys(state.playersData).forEach(jugadorId => {
         let puntaje = 0;
         const player = state.playersData[jugadorId];
         if (!player || !player.progresoCartas) return;
         
+        // 1. Sumar puntajes de cartas
         COLORES.forEach(color => {
             for (let i = 1; i <= 9; i++) {
                 const key = `${color}-${i}`;
                 const data = player.progresoCartas[key];
                 if (data && data.completada === true) {
-                    puntaje += PUNTAJES[color][i - 1] || 0;
+                    if (color !== primerColor || !primerColor) {
+                        puntaje += PUNTAJES[color][i - 1] || 0;
+                    }
                 }
             }
         });
         
+        // 2. Sumar tickets de color
         COLORES.forEach(color => {
             if (state.tickets[color] === jugadorId) {
                 puntaje += TICKETS[color].puntaje;
             }
         });
         
+        // 3. BONUS TICKET - SOLO si el jugador es el dueño del bonus
         if (state.bonusTicket === jugadorId) {
             puntaje += TICKETS.bonus.puntaje;
         }
         
-        // Sumar puntos de cartas especiales
+        // 4. Sumar puntos de cartas especiales
         if (player.puntosEspeciales && player.puntosEspeciales.length > 0) {
             const totalPuntosEspeciales = player.puntosEspeciales.reduce((sum, pts) => sum + pts, 0);
             puntaje += totalPuntosEspeciales;
@@ -195,10 +239,404 @@ function actualizarPuntajesConTickets() {
 }
 
 // ============================================
+// ACTUALIZAR PUNTAJES EN VIVO (CUANDO UN COLOR LLEGA A META)
+// ============================================
+
+function actualizarPuntajesEnVivo() {
+    const playerData = state.playersData[state.myId];
+    const primerColor = state.coloresMeta?.[0] || null;
+    
+    let puntajeTotal = 0;
+    
+    if (playerData && playerData.progresoCartas) {
+        COLORES.forEach(color => {
+            let puntajeColor = 0;
+            for (let i = 1; i <= 9; i++) {
+                const key = `${color}-${i}`;
+                const data = playerData.progresoCartas[key];
+                if (data && data.completada === true) {
+                    puntajeColor += PUNTAJES[color][i - 1] || 0;
+                }
+            }
+            if (color === primerColor) {
+                puntajeColor = 0;
+            }
+            puntajeTotal += puntajeColor;
+        });
+        
+        COLORES.forEach(color => {
+            if (state.tickets[color] === state.myId) {
+                puntajeTotal += TICKETS[color].puntaje;
+            }
+        });
+        
+        // BONUS TICKET
+        if (state.bonusTicket === state.myId) {
+            puntajeTotal += TICKETS.bonus.puntaje;
+        }
+        
+        if (playerData.puntosEspeciales && playerData.puntosEspeciales.length > 0) {
+            const totalEspeciales = playerData.puntosEspeciales.reduce((sum, pts) => sum + pts, 0);
+            puntajeTotal += totalEspeciales;
+        }
+    }
+    
+    state.myTotalScore = puntajeTotal;
+    if (playerData) {
+        playerData.score = puntajeTotal;
+    }
+    
+    renderStatusPanel();
+    renderLeaderboard();
+    
+    const scoreTotal = document.getElementById('score-total');
+    if (scoreTotal) {
+        scoreTotal.textContent = state.myTotalScore;
+    }
+}
+
+// ============================================
+// ACTUALIZAR PUNTAJES CON DOBLE (CUANDO EL SEGUNDO COLOR LLEGA A META)
+// ============================================
+
+function actualizarPuntajesConDoble() {
+    const playerData = state.playersData[state.myId];
+    const coloresMeta = state.coloresMeta;
+    const primerColor = coloresMeta[0];
+    const segundoColor = coloresMeta[1];
+    
+    // Encontrar el color más atrás
+    let colorMasAtras = null;
+    let casillaMasBaja = Infinity;
+    let coloresEnEmpate = [];
+    
+    COLORES.forEach(color => {
+        if (coloresMeta.includes(color)) return;
+        const posicion = state.fichas[color] || 0;
+        if (posicion < casillaMasBaja) {
+            casillaMasBaja = posicion;
+            colorMasAtras = color;
+            coloresEnEmpate = [color];
+        } else if (posicion === casillaMasBaja) {
+            coloresEnEmpate.push(color);
+        }
+    });
+    
+    if (coloresEnEmpate.length > 1) {
+        let minCartas = Infinity;
+        coloresEnEmpate.forEach(color => {
+            const cartas = contarCartasCompletadasPorColor(state.myId, color);
+            if (cartas < minCartas) {
+                minCartas = cartas;
+                colorMasAtras = color;
+            }
+        });
+    }
+    
+    let puntajeTotal = 0;
+    let puntajesPorColor = {};
+    
+    COLORES.forEach(color => {
+        let puntajeCartas = 0;
+        for (let i = 1; i <= 9; i++) {
+            const key = `${color}-${i}`;
+            const data = playerData?.progresoCartas?.[key];
+            if (data && data.completada === true) {
+                puntajeCartas += PUNTAJES[color][i - 1] || 0;
+            }
+        }
+        
+        let puntajeFinal = 0;
+        let esPrimero = false;
+        let esSegundo = false;
+        let esDoble = false;
+        
+        if (color === primerColor) {
+            puntajeFinal = 0;
+            esPrimero = true;
+        } else if (color === segundoColor) {
+            puntajeFinal = puntajeCartas;
+            esSegundo = true;
+        } else if (color === colorMasAtras) {
+            puntajeFinal = puntajeCartas * 2;
+            esDoble = true;
+        } else {
+            puntajeFinal = puntajeCartas;
+        }
+        
+        // SUMAR TICKET DE COLOR (si aplica)
+        if (state.tickets[color] === state.myId) {
+            puntajeFinal += TICKETS[color].puntaje;
+        }
+        
+        puntajesPorColor[color] = {
+            puntaje: puntajeFinal,
+            puntajeCartas: puntajeCartas,
+            esPrimero,
+            esSegundo,
+            esDoble
+        };
+        puntajeTotal += puntajeFinal;
+    });
+    
+    // SUMAR BONUS TICKET
+    if (state.bonusTicket === state.myId) {
+        puntajeTotal += TICKETS.bonus.puntaje;
+    }
+    
+    // Sumar puntos de cartas especiales
+    if (playerData && playerData.puntosEspeciales && playerData.puntosEspeciales.length > 0) {
+        const totalEspeciales = playerData.puntosEspeciales.reduce((sum, pts) => sum + pts, 0);
+        puntajeTotal += totalEspeciales;
+    }
+    
+    state.myTotalScore = puntajeTotal;
+    if (playerData) {
+        playerData.score = puntajeTotal;
+    }
+    
+    state.resultadosFinales = puntajesPorColor;
+    
+    renderStatusPanel();
+    renderLeaderboard();
+    
+    const scoreTotal = document.getElementById('score-total');
+    if (scoreTotal) {
+        scoreTotal.textContent = state.myTotalScore;
+    }
+}
+
+// ============================================
+// FINALIZAR JUEGO
+// ============================================
+
+export function finalizarJuego() {
+    if (state.juegoTerminado) return;
+    state.juegoTerminado = true;
+    
+    // Si no hay resultados finales calculados, calcularlos ahora
+    if (Object.keys(state.resultadosFinales).length === 0) {
+        const resultados = calcularPuntajesFinales();
+        state.resultadosFinales = resultados;
+    }
+    
+    // Asegurar que el score final esté actualizado
+    let totalPuntaje = 0;
+    COLORES.forEach(color => {
+        totalPuntaje += state.resultadosFinales[color]?.puntaje || 0;
+    });
+    
+    const playerData = state.playersData[state.myId];
+    if (playerData && playerData.puntosEspeciales && playerData.puntosEspeciales.length > 0) {
+        const totalEspeciales = playerData.puntosEspeciales.reduce((sum, pts) => sum + pts, 0);
+        totalPuntaje += totalEspeciales;
+    }
+    
+    state.myTotalScore = totalPuntaje;
+    if (playerData) {
+        playerData.score = totalPuntaje;
+    }
+    
+    // Mostrar modal de podio
+    mostrarPodio(state.resultadosFinales);
+    
+    // Broadcast si está en sala
+    if (state.currentRoom) {
+        broadcastJuegoTerminado(state.resultadosFinales);
+    }
+}
+
+function calcularPuntajesFinales() {
+    const resultados = {};
+    const coloresMeta = state.coloresMeta;
+    const primerColor = coloresMeta[0];
+    const segundoColor = coloresMeta[1];
+    
+    // Encontrar el color más atrás (casilla más baja) entre los que NO llegaron a 6
+    let colorMasAtras = null;
+    let casillaMasBaja = Infinity;
+    let coloresEnEmpate = [];
+    
+    COLORES.forEach(color => {
+        if (coloresMeta.includes(color)) return; // Saltar colores que llegaron a 6
+        
+        const posicion = state.fichas[color] || 0;
+        if (posicion < casillaMasBaja) {
+            casillaMasBaja = posicion;
+            colorMasAtras = color;
+            coloresEnEmpate = [color];
+        } else if (posicion === casillaMasBaja) {
+            coloresEnEmpate.push(color);
+        }
+    });
+    
+    // Si hay empate en la casilla más baja, el que tiene menos cartas completadas gana el doble
+    if (coloresEnEmpate.length > 1) {
+        let minCartas = Infinity;
+        coloresEnEmpate.forEach(color => {
+            const cartas = contarCartasCompletadasPorColor(state.myId, color);
+            if (cartas < minCartas) {
+                minCartas = cartas;
+                colorMasAtras = color;
+            }
+        });
+        // Si hay empate en cartas también, se queda el primero (no debería pasar normalmente)
+    }
+    
+    // Calcular puntajes para cada color
+    COLORES.forEach(color => {
+        const puntajeCartas = getPuntajeCartasColor(state.myId, color);
+        const tieneTicket = state.tickets[color] === state.myId;
+        const puntajeTicket = tieneTicket ? TICKETS[color].puntaje : 0;
+        
+        let puntajeFinal = 0;
+        let esPrimero = false;
+        let esSegundo = false;
+        let esDoble = false;
+        
+        if (color === primerColor) {
+            // Primer color en llegar a 6 → NO puntúa cartas, solo ticket
+            puntajeFinal = puntajeTicket;
+            esPrimero = true;
+        } else if (color === segundoColor) {
+            // Segundo color → puntaje normal
+            puntajeFinal = puntajeCartas + puntajeTicket;
+            esSegundo = true;
+        } else if (color === colorMasAtras) {
+            // Color más atrás → puntaje doble (solo cartas, no ticket)
+            puntajeFinal = (puntajeCartas * 2) + puntajeTicket;
+            esDoble = true;
+        } else {
+            // Resto → puntaje normal
+            puntajeFinal = puntajeCartas + puntajeTicket;
+        }
+        
+        resultados[color] = {
+            puntaje: puntajeFinal,
+            puntajeCartas: puntajeCartas,
+            puntajeTicket: puntajeTicket,
+            posicion: state.fichas[color] || 0,
+            cartasCompletadas: contarCartasCompletadasPorColor(state.myId, color),
+            esPrimero,
+            esSegundo,
+            esDoble,
+            multiplicador: esDoble ? 2 : 1
+        };
+    });
+    
+    return resultados;
+}
+
+function mostrarPodio(resultados) {
+    // Calcular puntaje total del jugador sumando todos los colores
+    let totalPuntaje = 0;
+    COLORES.forEach(color => {
+        totalPuntaje += resultados[color]?.puntaje || 0;
+    });
+    
+    // También sumar puntos de cartas especiales si no se incluyeron
+    const playerData = state.playersData[state.myId];
+    if (playerData && playerData.puntosEspeciales && playerData.puntosEspeciales.length > 0) {
+        const totalEspeciales = playerData.puntosEspeciales.reduce((sum, pts) => sum + pts, 0);
+        totalPuntaje += totalEspeciales;
+    }
+    
+    // Actualizar score final
+    state.myTotalScore = totalPuntaje;
+    if (playerData) {
+        playerData.score = totalPuntaje;
+    }
+    
+    // Construir HTML del podio
+    const modal = document.getElementById('podioModal');
+    const content = document.getElementById('podioContent');
+    if (!modal || !content) return;
+    
+    const colorHex = {
+        celeste: '#4fc3f7',
+        lima: '#aed581',
+        naranja: '#ffb74d',
+        purpura: '#ce93d8',
+        rosa: '#f06292'
+    };
+    
+    const colorNombre = {
+        celeste: 'Celeste',
+        lima: 'Lima',
+        naranja: 'Naranja',
+        purpura: 'Púrpura',
+        rosa: 'Rosa'
+    };
+    
+    // Ordenar colores por puntaje (mayor a menor)
+    const coloresOrdenados = COLORES.slice().sort((a, b) => {
+        return (resultados[b]?.puntaje || 0) - (resultados[a]?.puntaje || 0);
+    });
+    
+    let html = `
+        <div style="text-align: center; margin-bottom: 15px;">
+            <div style="font-size: 2.5rem;">🏆</div>
+            <h2 style="color: #ffd700; margin-bottom: 4px;">¡JUEGO TERMINADO!</h2>
+            <p style="color: #aaa; font-size: 0.9rem;">Puntaje total: <strong style="color: #fff; font-size: 1.2rem;">${totalPuntaje} pts</strong></p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;">
+    `;
+    
+    coloresOrdenados.forEach((color, index) => {
+        const data = resultados[color];
+        const hex = colorHex[color] || '#888';
+        const nombre = colorNombre[color] || color;
+        const puntaje = data?.puntaje || 0;
+        const posicion = data?.posicion || 0;
+        const cartas = data?.cartasCompletadas || 0;
+        
+        let badge = '';
+        if (data?.esPrimero) badge = '🥇 1º en meta (0pts cartas)';
+        else if (data?.esSegundo) badge = '🥈 2º en meta';
+        else if (data?.esDoble) badge = '⭐ ¡DOBLE! (más atrás)';
+        
+        html += `
+            <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 6px; border-left: 3px solid ${hex};">
+                <span style="font-size: 1.1rem;">${index + 1}</span>
+                <span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: ${hex};"></span>
+                <span style="flex: 1; font-weight: bold; color: #fff; font-size: 0.9rem;">${nombre}</span>
+                <span style="color: #888; font-size: 0.7rem;">Ficha: ${posicion + 1}/6 | Cartas: ${cartas}</span>
+                ${badge ? `<span style="font-size: 0.65rem; color: #ffd700; background: rgba(255,215,0,0.15); padding: 2px 8px; border-radius: 10px;">${badge}</span>` : ''}
+                <span style="font-weight: bold; color: #fff; font-size: 1rem; min-width: 40px; text-align: right;">${puntaje} pts</span>
+            </div>
+        `;
+    });
+    
+    html += `
+        </div>
+        <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
+            <button onclick="window.cerrarPodio()" 
+                    style="background: #555; color: white; border: none; padding: 8px 30px; border-radius: 6px; font-size: 0.9rem; font-weight: bold; cursor: pointer;">
+                Cerrar
+            </button>
+        </div>
+    `;
+    
+    content.innerHTML = html;
+    modal.style.display = 'flex';
+}
+
+export function cerrarPodio() {
+    const modal = document.getElementById('podioModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// ============================================
 // COMPLETAR CARTA
 // ============================================
 
 export function completarCarta(carta, casillaNumero) {
+    // Si el juego terminó, no permitir más acciones
+    if (state.juegoTerminado) {
+        mostrarMensaje('El juego ya terminó. Reinicia para jugar de nuevo.', 'warning');
+        return;
+    }
+    
     const key = `${carta.color}-${carta.numero}`;
     
     // Inicializar como objeto con casillas marcadas
@@ -228,15 +666,103 @@ export function completarCarta(carta, casillaNumero) {
     if (totalMarcadas === 3) {
         progreso.completada = true;
         
-        // Avanzar ficha
-        if (!state.fichas[carta.color]) {
-            state.fichas[carta.color] = 0;
-        }
-        if (state.fichas[carta.color] < 5) {
-            state.fichas[carta.color]++;
+        // Verificar si la ficha ya está en la meta (casilla 6)
+        const posicionActual = state.fichas[carta.color] || 0;
+        
+        // Avanzar ficha SOLO si no está en la meta
+        if (posicionActual < 5) {
+            if (!state.fichas[carta.color]) {
+                state.fichas[carta.color] = 0;
+            }
+            if (state.fichas[carta.color] < 5) {
+                state.fichas[carta.color]++;
+            }
+            
+            // Verificar si la ficha llegó a la meta (casilla 6)
+            const nuevaPosicion = state.fichas[carta.color] || 0;
+            if (nuevaPosicion === 5) { // 5 = casilla 6 (0-index)
+                // Registrar el color en coloresMeta si no está ya
+                if (!state.coloresMeta.includes(carta.color)) {
+                    state.coloresMeta.push(carta.color);
+                    
+                    // Si es el PRIMER color en llegar a meta
+                    if (state.coloresMeta.length === 1) {
+                        mostrarMensaje(`🎉 ¡${carta.color} llegó a la META! (1/2)`, 'success');
+                        mostrarMensaje(`⚠️ Las cartas de ${carta.color} ahora valen 0 pts (solo ticket)`, 'warning');
+                        
+                        // MOVER CARTA A TERMINADAS
+                        const cartaIndex = state.cartasJugador.findIndex(c => c && c.id === carta.id);
+                        if (cartaIndex !== -1) {
+                            state.cartasJugador[cartaIndex] = null;
+                            state.cartasTerminadas.push(carta);
+                            state.habilidadesUsadas[carta.id] = false;
+                        }
+                        
+                        // ACTUALIZAR PUNTAJES EN VIVO - Este color ahora vale 0
+                        actualizarPuntajesEnVivo();
+                        
+                        // Broadcast para sincronizar con otros jugadores
+                        if (state.currentRoom) {
+                            broadcastScore('sync');
+                            broadcastTablero();
+                        }
+                        
+                        // Actualizar UI (sin llamar a calculateScores que sobrescribiría)
+                        updateVisuals();
+                        renderCartasJugador();
+                        renderBoard();
+                        renderLeaderboard();
+                        renderStatusPanel();
+                        actualizarBotonEspecial();
+                        
+                        // Cerrar zoom
+                        cerrarZoom();
+                        
+                        return; // Salir para no ejecutar el resto
+                        
+                    } else if (state.coloresMeta.length === 2) {
+                        mostrarMensaje(`🎉 ¡${carta.color} llegó a la META! (2/2) - Calculando resultados...`, 'success');
+                        
+                        // MOVER CARTA A TERMINADAS
+                        const cartaIndex = state.cartasJugador.findIndex(c => c && c.id === carta.id);
+                        if (cartaIndex !== -1) {
+                            state.cartasJugador[cartaIndex] = null;
+                            state.cartasTerminadas.push(carta);
+                            state.habilidadesUsadas[carta.id] = false;
+                        }
+                        
+                        // ACTUALIZAR PUNTAJES CON DOBLE (antes de mostrar el podio)
+                        actualizarPuntajesConDoble();
+                        
+                        // Broadcast para sincronizar
+                        if (state.currentRoom) {
+                            broadcastScore('sync');
+                            broadcastTablero();
+                        }
+                        
+                        // Actualizar UI
+                        updateVisuals();
+                        renderCartasJugador();
+                        renderBoard();
+                        renderLeaderboard();
+                        renderStatusPanel();
+                        actualizarBotonEspecial();
+                        cerrarZoom();
+                        
+                        // FINALIZAR EL JUEGO (mostrar podio) después de 800ms
+                        setTimeout(() => {
+                            finalizarJuego();
+                        }, 800);
+                        
+                        return; // Salir para no ejecutar el resto
+                    }
+                }
+            }
+        } else {
+            mostrarMensaje(`La ficha de ${carta.color} ya está en la META (no avanza más)`, 'info');
         }
         
-        // MOVER CARTA A TERMINADAS
+        // MOVER CARTA A TERMINADAS (si no se movió en los casos anteriores)
         const cartaIndex = state.cartasJugador.findIndex(c => c && c.id === carta.id);
         if (cartaIndex !== -1) {
             state.cartasJugador[cartaIndex] = null;
@@ -286,6 +812,15 @@ export function actualizarBotonEspecial() {
     const btn = document.querySelector('.btn-especial');
     if (!btn) return;
     
+    // Si el juego terminó, deshabilitar botón
+    if (state.juegoTerminado) {
+        btn.disabled = true;
+        btn.style.opacity = '0.4';
+        btn.style.cursor = 'not-allowed';
+        btn.title = 'El juego ha terminado';
+        return;
+    }
+    
     if (isMazoEspecialDisponible()) {
         btn.disabled = false;
         btn.style.opacity = '1';
@@ -313,6 +848,12 @@ export function actualizarBotonEspecial() {
 // ============================================
 
 export function agregarCartaAJugador(indexVisible) {
+    // Si el juego terminó, no permitir más acciones
+    if (state.juegoTerminado) {
+        mostrarMensaje('El juego ya terminó. Reinicia para jugar de nuevo.', 'warning');
+        return;
+    }
+    
     const carta = state.cartasVisibles[indexVisible];
     if (!carta) {
         mostrarMensaje('Esta casilla esta vacia', 'warning');
@@ -357,6 +898,11 @@ export function agregarCartaAJugador(indexVisible) {
 // ============================================
 
 export function usarHabilidad(carta) {
+    if (state.juegoTerminado) {
+        mostrarMensaje('El juego ya terminó.', 'warning');
+        return;
+    }
+    
     if (!carta) {
         mostrarMensaje('Carta no valida', 'error');
         return;
@@ -442,6 +988,11 @@ export function cerrarHabilidad() {
 // ============================================
 
 export function usarCartaEspecial() {
+    if (state.juegoTerminado) {
+        mostrarMensaje('El juego ya terminó.', 'warning');
+        return;
+    }
+    
     if (!isMazoEspecialDisponible()) {
         const habLima = contarHabilidadesLimaUsadas();
         const espUsadas = contarCartasEspecialesUsadas();
@@ -523,6 +1074,12 @@ function mostrarCartaEspecial(carta) {
 // ============================================
 
 export function ejecutarEfectoEspecial() {
+    if (state.juegoTerminado) {
+        mostrarMensaje('El juego ya terminó.', 'warning');
+        cerrarEspecial();
+        return;
+    }
+    
     const carta = state.cartaEspecialActual;
     if (!carta) return;
     
@@ -622,13 +1179,14 @@ function ejecutarMoverFicha() {
             rosa: '#f06292'
         }[color] || '#888';
         const fichaPos = state.fichas[color] || 0;
+        const enMeta = fichaPos >= 5; // Casilla 6 (0-index = 5)
         const puedeAdelante = fichaPos < 5;
-        const puedeAtras = fichaPos > 0;
+        const puedeAtras = fichaPos > 0 && !enMeta; // No puede retroceder si está en meta
         
         buttonsHtml += `
             <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.05); padding:6px 10px; border-radius:4px; border:1px solid ${colorHex}44;">
                 <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:${colorHex};"></span>
-                <span style="flex:1; color:#fff; font-weight:bold; text-transform:capitalize; font-size:0.85rem;">${color}</span>
+                <span style="flex:1; color:#fff; font-weight:bold; text-transform:capitalize; font-size:0.85rem;">${color} ${enMeta ? '🏆 META' : ''}</span>
                 <span style="color:#888; font-size:0.65rem;">${fichaPos + 1}/6</span>
                 <button onclick="window.moverFicha('${color}', -1)" ${!puedeAtras ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''} 
                         style="background:#ff6b6b; border:none; color:white; padding:2px 10px; border-radius:3px; cursor:pointer; font-weight:bold; font-size:0.8rem;">
@@ -660,8 +1218,21 @@ function ejecutarMoverFicha() {
 }
 
 export function moverFicha(color, direccion) {
+    if (state.juegoTerminado) {
+        mostrarMensaje('El juego ya terminó.', 'warning');
+        cerrarEspecial();
+        return;
+    }
+    
     const fichaPos = state.fichas[color] || 0;
+    const enMeta = fichaPos >= 5;
     const nuevaPos = fichaPos + direccion;
+    
+    // No permitir mover si está en meta
+    if (enMeta) {
+        mostrarMensaje(`La ficha de ${color} ya está en la META y no se puede mover`, 'warning');
+        return;
+    }
     
     if (nuevaPos < 0 || nuevaPos > 5) {
         mostrarMensaje('No puedes mover la ficha más allá de los límites', 'warning');
@@ -670,6 +1241,20 @@ export function moverFicha(color, direccion) {
     
     state.fichas[color] = nuevaPos;
     mostrarMensaje(`Ficha de ${color} movida a casilla ${nuevaPos + 1}`, 'success');
+    
+    // Verificar si llegó a la meta
+    if (nuevaPos === 5) {
+        if (!state.coloresMeta.includes(color)) {
+            state.coloresMeta.push(color);
+            mostrarMensaje(`🎉 ¡${color} llegó a la META! (${state.coloresMeta.length}/2)`, 'success');
+            
+            if (state.coloresMeta.length >= 2) {
+                setTimeout(() => {
+                    finalizarJuego();
+                }, 500);
+            }
+        }
+    }
     
     cerrarEspecial();
     state.modoEspecial = null;
@@ -780,18 +1365,62 @@ export function cerrarEspecial() {
 // ============================================
 
 export function calculateScores() {
-    // 1. Calcular puntaje de cartas de color (sin extras)
-    if (Object.keys(state.playersData).length > 0) {
-        actualizarPuntajesConTickets();
+    // Si el juego terminó, no recalcular
+    if (state.juegoTerminado) {
+        const scoreTotal = document.getElementById('score-total');
+        if (scoreTotal) {
+            scoreTotal.textContent = state.myTotalScore;
+        }
+        return;
     }
     
-    // 2. Asegurar que el puntaje total incluya los extras de especiales
     const playerData = state.playersData[state.myId];
-    if (playerData) {
-        state.myTotalScore = playerData.score || 0;
+    const primerColor = state.coloresMeta?.[0] || null;
+    
+    let puntajeTotal = 0;
+    
+    if (playerData && playerData.progresoCartas) {
+        // 1. Sumar puntajes de cartas por color
+        COLORES.forEach(color => {
+            let puntajeColor = 0;
+            for (let i = 1; i <= 9; i++) {
+                const key = `${color}-${i}`;
+                const data = playerData.progresoCartas[key];
+                if (data && data.completada === true) {
+                    puntajeColor += PUNTAJES[color][i - 1] || 0;
+                }
+            }
+            if (color === primerColor) {
+                puntajeColor = 0;
+            }
+            puntajeTotal += puntajeColor;
+        });
+        
+        // 2. Sumar tickets de color
+        COLORES.forEach(color => {
+            if (state.tickets[color] === state.myId) {
+                puntajeTotal += TICKETS[color].puntaje;
+            }
+        });
+        
+        // 3. Sumar BONUS TICKET
+        if (state.bonusTicket === state.myId) {
+            puntajeTotal += TICKETS.bonus.puntaje;
+        }
+        
+        // 4. Sumar puntos de cartas especiales
+        if (playerData.puntosEspeciales && playerData.puntosEspeciales.length > 0) {
+            const totalEspeciales = playerData.puntosEspeciales.reduce((sum, pts) => sum + pts, 0);
+            puntajeTotal += totalEspeciales;
+        }
     }
     
-    // 3. Actualizar UI
+    state.myTotalScore = puntajeTotal;
+    if (playerData) {
+        playerData.score = puntajeTotal;
+    }
+    
+    // Actualizar UI
     const scoreTotal = document.getElementById('score-total');
     if (scoreTotal) {
         scoreTotal.textContent = state.myTotalScore;
@@ -807,7 +1436,7 @@ export function calculateScores() {
         mazoEspecialRestantes.textContent = state.mazoEspecialDisponible.length;
     }
 
-    // 4. Actualizar playersData con el puntaje correcto
+    // Actualizar playersData para broadcast
     if (state.currentRoom) {
         state.playersData[state.myId] = {
             name: state.myName,
@@ -833,6 +1462,12 @@ export function calculateScores() {
 // ============================================
 
 export function repartirCartas() {
+    // Si el juego terminó, no permitir repartir
+    if (state.juegoTerminado) {
+        mostrarMensaje('El juego ya terminó. Reinicia para jugar de nuevo.', 'warning');
+        return;
+    }
+    
     if (state.cartasRepartidas) {
         mostrarMensaje('Ya se repartieron las cartas', 'warning');
         return;
@@ -871,6 +1506,11 @@ export function repartirCartas() {
     state.bonusTicket = null;
     state.bonusReclamado = false;
     state.myTotalScore = 0;
+    
+    // Resetear estado de fin del juego
+    state.juegoTerminado = false;
+    state.coloresMeta = [];
+    state.resultadosFinales = {};
     
     renderCartasVisibles();
     renderCartasJugador();
@@ -935,6 +1575,11 @@ export function reiniciarTodo() {
     state.cartaEspecialActual = null;
     state.modoEspecial = null;
     
+    // Resetear estado de fin del juego
+    state.juegoTerminado = false;
+    state.coloresMeta = [];
+    state.resultadosFinales = {};
+    
     // 5. Resetear tickets
     COLORES.forEach(color => {
         state.tickets[color] = null;
@@ -947,7 +1592,10 @@ export function reiniciarTodo() {
         state.playersData[state.myId].puntosEspeciales = [];
     }
     
-    // 7. Renderizar todo
+    // 7. Cerrar modal de podio si está abierto
+    cerrarPodio();
+    
+    // 8. Renderizar todo
     renderBoard();
     renderCartasVisibles();
     renderCartasJugador();
@@ -957,7 +1605,7 @@ export function reiniciarTodo() {
     renderLeaderboard();
     actualizarBotonEspecial();
     
-    // 8. Broadcast si está en sala
+    // 9. Broadcast si está en sala
     if (state.currentRoom) {
         broadcastMazo();
         broadcastTablero();

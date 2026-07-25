@@ -118,16 +118,54 @@ export function renderLeaderboard() {
         let statsHtml = '<div class="player-stats-line">';
         let totalCartas = 0;
         
+        const coloresMeta = state.coloresMeta || [];
+        const primerColor = coloresMeta[0] || null;
+        const resultadosFinales = state.resultadosFinales || {};
+        
         COLORES.forEach(color => {
             const completadas = getCartasCompletadasPorColor(p.id, color);
             const total = completadas.length;
             
-            // Calcular puntaje de este color
-            let puntajeColor = 0;
+            // Calcular puntaje base de este color (SOLO CARTAS, sin tickets)
+            let puntajeBase = 0;
             completadas.forEach(num => {
-                puntajeColor += PUNTAJES[color][num - 1] || 0;
+                puntajeBase += PUNTAJES[color][num - 1] || 0;
             });
-            totalCartas += puntajeColor;
+            
+            // Determinar puntaje a mostrar (SOLO CARTAS, sin tickets)
+            let puntajeMostrar = puntajeBase;
+            let decoracion = '';
+            
+            // Verificar si hay resultados finales (segundo color en meta)
+            if (resultadosFinales[color]) {
+                const data = resultadosFinales[color];
+                if (data.esPrimero) {
+                    // Primer color en meta → 0 pts (solo tachado)
+                    puntajeMostrar = 0;
+                    decoracion = 'text-decoration: line-through;';
+                } else if (data.esDoble) {
+                    // Color más atrás → x2 (SOLO CARTAS, sin ticket)
+                    puntajeMostrar = puntajeBase * 2;
+                } else {
+                    // Resto → normal (SOLO CARTAS)
+                    puntajeMostrar = puntajeBase;
+                }
+            } else if (color === primerColor) {
+                // Primer color en meta → 0 pts (solo tachado)
+                puntajeMostrar = 0;
+                decoracion = 'text-decoration: line-through;';
+            }
+            
+            totalCartas += puntajeMostrar;
+            
+            // Color HEX original (sin cambios)
+            const colorHex = {
+                celeste: '#4fc3f7',
+                lima: '#aed581',
+                naranja: '#ffb74d',
+                purpura: '#ce93d8',
+                rosa: '#f06292'
+            }[color] || '#666';
             
             // Contar habilidades disponibles
             const cartasTerminadas = p.cartasTerminadas || [];
@@ -137,17 +175,9 @@ export function renderLeaderboard() {
                 return !usada;
             });
             
-            const colorHex = {
-                celeste: '#4fc3f7',
-                lima: '#aed581',
-                naranja: '#ffb74d',
-                purpura: '#ce93d8',
-                rosa: '#f06292'
-            }[color] || '#666';
-            
             statsHtml += `
-                <span class="stat-color" style="color: ${colorHex};">
-                    ● ${total} (${puntajeColor}pts) ${disponibles.length} hab.
+                <span class="stat-color" style="color: ${colorHex}; ${decoracion}">
+                    ● ${total} (${puntajeMostrar}pts) ${disponibles.length} hab.
                 </span>
             `;
         });

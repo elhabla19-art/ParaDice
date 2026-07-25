@@ -17,7 +17,8 @@ import {
     moverFicha,
     recuperarHabilidad,
     cerrarEspecial,
-    actualizarBotonEspecial
+    actualizarBotonEspecial,
+    cerrarPodio
 } from './juego.js';
 import { 
     playSolo, showJoinModal, backToLobby, 
@@ -73,6 +74,7 @@ function init() {
     window.usarHabilidadDesdeZoom = usarHabilidadDesdeZoom;
     window.actualizarBotonEspecial = actualizarBotonEspecial;
     window.renderStatusPanel = renderStatusPanel;
+    window.cerrarPodio = cerrarPodio;
     
     console.log('ParaDice - Iniciado');
     console.log(`Cartas en mazo: ${state.mazoColores.length}`);
@@ -101,11 +103,17 @@ document.addEventListener('click', function(event) {
     if (modal && event.target === modal) cerrarEspecial();
 });
 
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('podioModal');
+    if (modal && event.target === modal) cerrarPodio();
+});
+
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         cerrarZoom();
         cerrarHabilidad();
         cerrarEspecial();
+        cerrarPodio();
     }
 });
 
@@ -135,5 +143,6 @@ export {
     cerrarEspecial,
     usarHabilidadDesdeZoom,
     actualizarBotonEspecial,
-    renderStatusPanel
+    renderStatusPanel,
+    cerrarPodio
 };

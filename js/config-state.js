@@ -128,7 +128,12 @@ export const state = {
     myId: Math.random().toString(36).substr(2, 9),
     currentRoom: null,
     playersData: {},
-    myName: 'Jugador'
+    myName: 'Jugador',
+
+    // FIN DEL JUEGO
+    juegoTerminado: false,
+    coloresMeta: [],
+    resultadosFinales: {}
 };
 
 // Inicializar estado
@@ -152,6 +157,11 @@ export function initState() {
     state.myTotalScore = 0;
     state.cartasRepartidas = false;
     state.moveHistory = [];
+    
+    // Reiniciar estado de fin del juego
+    state.juegoTerminado = false;
+    state.coloresMeta = [];
+    state.resultadosFinales = {};
     
     // Inicializar puntosEspeciales para el jugador actual
     if (!state.playersData[state.myId]) {
