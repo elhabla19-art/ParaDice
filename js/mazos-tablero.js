@@ -56,7 +56,7 @@ function getColorFicha(color) {
     return colores[color] || '#333';
 }
 
-// RENDERIZAR TABLERO (sin marcas de casillas completadas)
+// RENDERIZAR TABLERO (SOLO VISUAL - SIN INTERACCIÓN)
 export function renderBoard() {
     const boardElement = document.getElementById('game-board');
     if (!boardElement) return;
@@ -97,7 +97,6 @@ export function renderBoard() {
                 box.appendChild(fichaIndicador);
             }
             
-            box.addEventListener('click', () => handleBoxClick(color, i));
             rowDiv.appendChild(box);
         }
         
@@ -300,12 +299,6 @@ export function updateVisuals() {
         estadoJuego.textContent = state.cartasRepartidas ? 'En juego' : 'Esperando';
         estadoJuego.style.color = state.cartasRepartidas ? '#4fc3f7' : '#f06292';
     }
-}
-
-// MANEJADOR DE CLICK EN TABLERO
-export function handleBoxClick(color, index) {
-    const fichaPos = state.fichas[color] || 0;
-    console.log(`Ficha de ${color} esta en casilla ${fichaPos + 1}`);
 }
 
 // EXPONER FUNCIONES PARA WINDOW
