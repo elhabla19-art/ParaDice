@@ -173,7 +173,7 @@ function verificarTicketBonus(jugadorId) {
         state.bonusTicket = jugadorId;
         state.bonusReclamado = true;
         const nombreJugador = state.playersData[jugadorId]?.name || 'Jugador';
-        mostrarMensaje(`🎟️ Ticket BONUS (+${TICKETS.bonus.puntaje} pts) obtenido por ${nombreJugador}`, 'success');
+        mostrarMensaje(`Ticket BONUS (+${TICKETS.bonus.puntaje} pts) obtenido por ${nombreJugador}`, 'success');
         
         // Broadcast inmediato
         if (state.currentRoom) {
@@ -414,204 +414,78 @@ export function finalizarJuego() {
     if (state.juegoTerminado) return;
     state.juegoTerminado = true;
     
-    // Si no hay resultados finales calculados, calcularlos ahora
-    if (Object.keys(state.resultadosFinales).length === 0) {
-        const resultados = calcularPuntajesFinales();
-        state.resultadosFinales = resultados;
-    }
+    // Asegurar que todos los jugadores tengan sus scores actualizados
+    calculateScores();
     
-    // Asegurar que el score final esté actualizado
-    let totalPuntaje = 0;
-    COLORES.forEach(color => {
-        totalPuntaje += state.resultadosFinales[color]?.puntaje || 0;
-    });
-    
-    const playerData = state.playersData[state.myId];
-    if (playerData && playerData.puntosEspeciales && playerData.puntosEspeciales.length > 0) {
-        const totalEspeciales = playerData.puntosEspeciales.reduce((sum, pts) => sum + pts, 0);
-        totalPuntaje += totalEspeciales;
-    }
-    
-    state.myTotalScore = totalPuntaje;
-    if (playerData) {
-        playerData.score = totalPuntaje;
-    }
-    
-    // Mostrar modal de podio
-    mostrarPodio(state.resultadosFinales);
+    // Mostrar modal de podio con TOP 3
+    mostrarPodio();
     
     // Broadcast si está en sala
     if (state.currentRoom) {
-        broadcastJuegoTerminado(state.resultadosFinales);
+        broadcastJuegoTerminado();
     }
 }
 
-function calcularPuntajesFinales() {
-    const resultados = {};
-    const coloresMeta = state.coloresMeta;
-    const primerColor = coloresMeta[0];
-    const segundoColor = coloresMeta[1];
-    
-    // Encontrar el color más atrás (casilla más baja) entre los que NO llegaron a 6
-    let colorMasAtras = null;
-    let casillaMasBaja = Infinity;
-    let coloresEnEmpate = [];
-    
-    COLORES.forEach(color => {
-        if (coloresMeta.includes(color)) return; // Saltar colores que llegaron a 6
-        
-        const posicion = state.fichas[color] || 0;
-        if (posicion < casillaMasBaja) {
-            casillaMasBaja = posicion;
-            colorMasAtras = color;
-            coloresEnEmpate = [color];
-        } else if (posicion === casillaMasBaja) {
-            coloresEnEmpate.push(color);
-        }
-    });
-    
-    // Si hay empate en la casilla más baja, el que tiene menos cartas completadas gana el doble
-    if (coloresEnEmpate.length > 1) {
-        let minCartas = Infinity;
-        coloresEnEmpate.forEach(color => {
-            const cartas = contarCartasCompletadasPorColor(state.myId, color);
-            if (cartas < minCartas) {
-                minCartas = cartas;
-                colorMasAtras = color;
-            }
-        });
-        // Si hay empate en cartas también, se queda el primero (no debería pasar normalmente)
-    }
-    
-    // Calcular puntajes para cada color
-    COLORES.forEach(color => {
-        const puntajeCartas = getPuntajeCartasColor(state.myId, color);
-        const tieneTicket = state.tickets[color] === state.myId;
-        const puntajeTicket = tieneTicket ? TICKETS[color].puntaje : 0;
-        
-        let puntajeFinal = 0;
-        let esPrimero = false;
-        let esSegundo = false;
-        let esDoble = false;
-        
-        if (color === primerColor) {
-            // Primer color en llegar a 6 → NO puntúa cartas, solo ticket
-            puntajeFinal = puntajeTicket;
-            esPrimero = true;
-        } else if (color === segundoColor) {
-            // Segundo color → puntaje normal
-            puntajeFinal = puntajeCartas + puntajeTicket;
-            esSegundo = true;
-        } else if (color === colorMasAtras) {
-            // Color más atrás → puntaje doble (solo cartas, no ticket)
-            puntajeFinal = (puntajeCartas * 2) + puntajeTicket;
-            esDoble = true;
-        } else {
-            // Resto → puntaje normal
-            puntajeFinal = puntajeCartas + puntajeTicket;
-        }
-        
-        resultados[color] = {
-            puntaje: puntajeFinal,
-            puntajeCartas: puntajeCartas,
-            puntajeTicket: puntajeTicket,
-            posicion: state.fichas[color] || 0,
-            cartasCompletadas: contarCartasCompletadasPorColor(state.myId, color),
-            esPrimero,
-            esSegundo,
-            esDoble,
-            multiplicador: esDoble ? 2 : 1
-        };
-    });
-    
-    return resultados;
-}
-
-function mostrarPodio(resultados) {
-    // Calcular puntaje total del jugador sumando todos los colores
-    let totalPuntaje = 0;
-    COLORES.forEach(color => {
-        totalPuntaje += resultados[color]?.puntaje || 0;
-    });
-    
-    // También sumar puntos de cartas especiales si no se incluyeron
-    const playerData = state.playersData[state.myId];
-    if (playerData && playerData.puntosEspeciales && playerData.puntosEspeciales.length > 0) {
-        const totalEspeciales = playerData.puntosEspeciales.reduce((sum, pts) => sum + pts, 0);
-        totalPuntaje += totalEspeciales;
-    }
-    
-    // Actualizar score final
-    state.myTotalScore = totalPuntaje;
-    if (playerData) {
-        playerData.score = totalPuntaje;
-    }
-    
-    // Construir HTML del podio
+function mostrarPodio() {
     const modal = document.getElementById('podioModal');
     const content = document.getElementById('podioContent');
     if (!modal || !content) return;
     
-    const colorHex = {
-        celeste: '#4fc3f7',
-        lima: '#aed581',
-        naranja: '#ffb74d',
-        purpura: '#ce93d8',
-        rosa: '#f06292'
-    };
+    // Obtener todos los jugadores y ordenar por score (mayor a menor)
+    const jugadores = Object.keys(state.playersData).map(id => ({
+        id: id,
+        nombre: state.playersData[id].name || 'Jugador',
+        score: state.playersData[id].score || 0,
+        esLocal: id === state.myId
+    }));
     
-    const colorNombre = {
-        celeste: 'Celeste',
-        lima: 'Lima',
-        naranja: 'Naranja',
-        purpura: 'Púrpura',
-        rosa: 'Rosa'
-    };
+    jugadores.sort((a, b) => b.score - a.score);
     
-    // Ordenar colores por puntaje (mayor a menor)
-    const coloresOrdenados = COLORES.slice().sort((a, b) => {
-        return (resultados[b]?.puntaje || 0) - (resultados[a]?.puntaje || 0);
-    });
+    // Tomar TOP 3
+    const top3 = jugadores.slice(0, 3);
+    
+    const medallas = ['🥇', '🥈', '🥉'];
     
     let html = `
-        <div style="text-align: center; margin-bottom: 15px;">
-            <div style="font-size: 2.5rem;">🏆</div>
-            <h2 style="color: #ffd700; margin-bottom: 4px;">¡JUEGO TERMINADO!</h2>
-            <p style="color: #aaa; font-size: 0.9rem;">Puntaje total: <strong style="color: #fff; font-size: 1.2rem;">${totalPuntaje} pts</strong></p>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 3rem;">🏆</div>
+            <h2 style="color: #ffd700; margin-bottom: 4px;">JUEGO TERMINADO</h2>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;">
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
     `;
     
-    coloresOrdenados.forEach((color, index) => {
-        const data = resultados[color];
-        const hex = colorHex[color] || '#888';
-        const nombre = colorNombre[color] || color;
-        const puntaje = data?.puntaje || 0;
-        const posicion = data?.posicion || 0;
-        const cartas = data?.cartasCompletadas || 0;
-        
-        let badge = '';
-        if (data?.esPrimero) badge = '🥇 1º en meta (0pts cartas)';
-        else if (data?.esSegundo) badge = '🥈 2º en meta';
-        else if (data?.esDoble) badge = '⭐ ¡DOBLE! (más atrás)';
-        
+    top3.forEach((jugador, index) => {
+        const esLocal = jugador.esLocal ? ' (Tú)' : '';
         html += `
-            <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 6px; border-left: 3px solid ${hex};">
-                <span style="font-size: 1.1rem;">${index + 1}</span>
-                <span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: ${hex};"></span>
-                <span style="flex: 1; font-weight: bold; color: #fff; font-size: 0.9rem;">${nombre}</span>
-                <span style="color: #888; font-size: 0.7rem;">Ficha: ${posicion + 1}/6 | Cartas: ${cartas}</span>
-                ${badge ? `<span style="font-size: 0.65rem; color: #ffd700; background: rgba(255,215,0,0.15); padding: 2px 8px; border-radius: 10px;">${badge}</span>` : ''}
-                <span style="font-weight: bold; color: #fff; font-size: 1rem; min-width: 40px; text-align: right;">${puntaje} pts</span>
+            <div style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.05); padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                <span style="font-size: 1.8rem; min-width: 45px; text-align: center;">${medallas[index] || `${index+1}.`}</span>
+                <span style="flex: 1; font-weight: bold; color: #fff; font-size: 1.1rem;">${jugador.nombre}${esLocal}</span>
+                <span style="font-weight: bold; color: #ffd700; font-size: 1.2rem; min-width: 60px; text-align: right;">${jugador.score} pts</span>
             </div>
         `;
     });
     
+    // Si hay más de 3 jugadores, mostrar posición del jugador local si no está en TOP 3
+    const localEnTop3 = top3.some(j => j.esLocal);
+    if (!localEnTop3 && jugadores.length > 3) {
+        const posLocal = jugadores.findIndex(j => j.esLocal) + 1;
+        const local = jugadores.find(j => j.esLocal);
+        if (local) {
+            html += `
+                <div style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.03); padding: 8px 16px; border-radius: 6px; border: 1px dashed rgba(255,255,255,0.1); margin-top: 4px;">
+                    <span style="font-size: 1rem; min-width: 45px; text-align: center; color: #888;">#${posLocal}</span>
+                    <span style="flex: 1; color: #888; font-size: 0.9rem;">${local.nombre} (Tú)</span>
+                    <span style="color: #666; font-size: 1rem; min-width: 60px; text-align: right;">${local.score} pts</span>
+                </div>
+            `;
+        }
+    }
+    
     html += `
         </div>
-        <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
+        <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
             <button onclick="window.cerrarPodio()" 
-                    style="background: #555; color: white; border: none; padding: 8px 30px; border-radius: 6px; font-size: 0.9rem; font-weight: bold; cursor: pointer;">
+                    style="background: #555; color: white; border: none; padding: 10px 35px; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer;">
                 Cerrar
             </button>
         </div>

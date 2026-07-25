@@ -108,14 +108,18 @@ export function connectToRoom(code) {
                 state.juegoTerminado = true;
                 state.coloresMeta = data.coloresMeta || [];
                 state.resultadosFinales = data.resultadosFinales || {};
-                state.myTotalScore = data.myTotalScore || 0;
                 
-                // Actualizar el score del jugador local
-                if (state.playersData[state.myId]) {
-                    state.playersData[state.myId].score = state.myTotalScore;
+                // Actualizar playersData con los scores recibidos
+                if (data.playersData) {
+                    Object.keys(data.playersData).forEach(id => {
+                        if (state.playersData[id]) {
+                            state.playersData[id].score = data.playersData[id].score || 0;
+                        }
+                    });
                 }
                 
-                mostrarPodioRemoto(data.resultadosFinales, data.myTotalScore);
+                // Mostrar podio remoto con TOP 3
+                mostrarPodioRemoto();
                 renderLeaderboard();
                 renderStatusPanel();
                 actualizarBotonEspecial();
@@ -174,74 +178,69 @@ export function connectToRoom(code) {
 }
 
 // ============================================
-// MOSTRAR PODIO REMOTO
+// MOSTRAR PODIO REMOTO (TOP 3)
 // ============================================
 
-function mostrarPodioRemoto(resultados, totalPuntaje) {
+function mostrarPodioRemoto() {
     const modal = document.getElementById('podioModal');
     const content = document.getElementById('podioContent');
     if (!modal || !content) return;
     
-    const colorHex = {
-        celeste: '#4fc3f7',
-        lima: '#aed581',
-        naranja: '#ffb74d',
-        purpura: '#ce93d8',
-        rosa: '#f06292'
-    };
+    // Obtener todos los jugadores y ordenar por score (mayor a menor)
+    const jugadores = Object.keys(state.playersData).map(id => ({
+        id: id,
+        nombre: state.playersData[id].name || 'Jugador',
+        score: state.playersData[id].score || 0,
+        esLocal: id === state.myId
+    }));
     
-    const colorNombre = {
-        celeste: 'Celeste',
-        lima: 'Lima',
-        naranja: 'Naranja',
-        purpura: 'Púrpura',
-        rosa: 'Rosa'
-    };
+    jugadores.sort((a, b) => b.score - a.score);
     
-    const coloresOrdenados = COLORES.slice().sort((a, b) => {
-        return (resultados[b]?.puntaje || 0) - (resultados[a]?.puntaje || 0);
-    });
+    // Tomar TOP 3
+    const top3 = jugadores.slice(0, 3);
+    
+    const medallas = ['🥇', '🥈', '🥉'];
     
     let html = `
-        <div style="text-align: center; margin-bottom: 15px;">
-            <div style="font-size: 2.5rem;">🏆</div>
-            <h2 style="color: #ffd700; margin-bottom: 4px;">¡JUEGO TERMINADO!</h2>
-            <p style="color: #aaa; font-size: 0.9rem;">Puntaje total: <strong style="color: #fff; font-size: 1.2rem;">${totalPuntaje} pts</strong></p>
-            <p style="color: #888; font-size: 0.7rem;">Resultados de ${state.playersData[state.myId]?.name || 'Jugador'}</p>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 3rem;">🏆</div>
+            <h2 style="color: #ffd700; margin-bottom: 4px;">JUEGO TERMINADO</h2>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;">
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
     `;
     
-    coloresOrdenados.forEach((color, index) => {
-        const data = resultados[color];
-        const hex = colorHex[color] || '#888';
-        const nombre = colorNombre[color] || color;
-        const puntaje = data?.puntaje || 0;
-        const posicion = data?.posicion || 0;
-        const cartas = data?.cartasCompletadas || 0;
-        
-        let badge = '';
-        if (data?.esPrimero) badge = '🥇 1º en meta (0pts cartas)';
-        else if (data?.esSegundo) badge = '🥈 2º en meta';
-        else if (data?.esDoble) badge = '⭐ ¡DOBLE! (más atrás)';
-        
+    top3.forEach((jugador, index) => {
+        const esLocal = jugador.esLocal ? ' (Tú)' : '';
         html += `
-            <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 6px; border-left: 3px solid ${hex};">
-                <span style="font-size: 1.1rem;">${index + 1}</span>
-                <span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: ${hex};"></span>
-                <span style="flex: 1; font-weight: bold; color: #fff; font-size: 0.9rem;">${nombre}</span>
-                <span style="color: #888; font-size: 0.7rem;">Ficha: ${posicion + 1}/6 | Cartas: ${cartas}</span>
-                ${badge ? `<span style="font-size: 0.65rem; color: #ffd700; background: rgba(255,215,0,0.15); padding: 2px 8px; border-radius: 10px;">${badge}</span>` : ''}
-                <span style="font-weight: bold; color: #fff; font-size: 1rem; min-width: 40px; text-align: right;">${puntaje} pts</span>
+            <div style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.05); padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                <span style="font-size: 1.8rem; min-width: 45px; text-align: center;">${medallas[index] || `${index+1}.`}</span>
+                <span style="flex: 1; font-weight: bold; color: #fff; font-size: 1.1rem;">${jugador.nombre}${esLocal}</span>
+                <span style="font-weight: bold; color: #ffd700; font-size: 1.2rem; min-width: 60px; text-align: right;">${jugador.score} pts</span>
             </div>
         `;
     });
     
+    // Si hay más de 3 jugadores, mostrar posición del jugador local si no está en TOP 3
+    const localEnTop3 = top3.some(j => j.esLocal);
+    if (!localEnTop3 && jugadores.length > 3) {
+        const posLocal = jugadores.findIndex(j => j.esLocal) + 1;
+        const local = jugadores.find(j => j.esLocal);
+        if (local) {
+            html += `
+                <div style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.03); padding: 8px 16px; border-radius: 6px; border: 1px dashed rgba(255,255,255,0.1); margin-top: 4px;">
+                    <span style="font-size: 1rem; min-width: 45px; text-align: center; color: #888;">#${posLocal}</span>
+                    <span style="flex: 1; color: #888; font-size: 0.9rem;">${local.nombre} (Tú)</span>
+                    <span style="color: #666; font-size: 1rem; min-width: 60px; text-align: right;">${local.score} pts</span>
+                </div>
+            `;
+        }
+    }
+    
     html += `
         </div>
-        <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
+        <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
             <button onclick="window.cerrarPodio()" 
-                    style="background: #555; color: white; border: none; padding: 8px 30px; border-radius: 6px; font-size: 0.9rem; font-weight: bold; cursor: pointer;">
+                    style="background: #555; color: white; border: none; padding: 10px 35px; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer;">
                 Cerrar
             </button>
         </div>
@@ -338,16 +337,26 @@ export function broadcastTablero() {
 // BROADCAST JUEGO TERMINADO
 // ============================================
 
-export function broadcastJuegoTerminado(resultados) {
+export function broadcastJuegoTerminado() {
     if (state.mqttClient && state.currentRoom) {
         const topic = `paradice_xyz/room/${state.currentRoom}`;
+        
+        // Crear copia de playersData solo con los scores
+        const playersScores = {};
+        Object.keys(state.playersData).forEach(id => {
+            playersScores[id] = {
+                score: state.playersData[id].score || 0,
+                name: state.playersData[id].name || 'Jugador'
+            };
+        });
+        
         const payload = JSON.stringify({
             action: 'juego_terminado',
             id: state.myId,
             juegoTerminado: true,
             coloresMeta: state.coloresMeta,
-            resultadosFinales: resultados,
-            myTotalScore: state.myTotalScore
+            resultadosFinales: state.resultadosFinales || {},
+            playersData: playersScores
         });
         state.mqttClient.publish(topic, payload);
     }
