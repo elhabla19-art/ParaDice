@@ -34,6 +34,11 @@ export function generarMazos() {
     state.cartasTerminadas = [];
     state.cartasRepartidas = false;
     
+    // Resetear puntosEspeciales al generar mazos
+    if (state.playersData[state.myId]) {
+        state.playersData[state.myId].puntosEspeciales = [];
+    }
+    
     COLORES.forEach(color => {
         state.tableroGlobal[color] = Array(6).fill(false);
         state.fichas[color] = 0;

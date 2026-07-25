@@ -177,6 +177,12 @@ function actualizarPuntajesConTickets() {
             puntaje += TICKETS.bonus.puntaje;
         }
         
+        // Sumar puntos de cartas especiales
+        if (player.puntosEspeciales && player.puntosEspeciales.length > 0) {
+            const totalPuntosEspeciales = player.puntosEspeciales.reduce((sum, pts) => sum + pts, 0);
+            puntaje += totalPuntosEspeciales;
+        }
+        
         if (jugadorId === state.myId) {
             state.myTotalScore = puntaje;
         }
@@ -548,6 +554,12 @@ function ejecutarPuntos(puntos) {
     // Mostrar mensaje con el puntaje extra
     mostrarMensaje(`✨ +${puntos} puntos extra!`, 'success');
     
+    // Agregar el punto al array de puntosEspeciales del jugador
+    if (!state.playersData[state.myId].puntosEspeciales) {
+        state.playersData[state.myId].puntosEspeciales = [];
+    }
+    state.playersData[state.myId].puntosEspeciales.push(puntos);
+    
     // Actualizar puntaje total del jugador
     state.myTotalScore += puntos;
     
@@ -796,7 +808,8 @@ export function calculateScores() {
             tablero: state.tableroGlobal,
             fichas: state.fichas,
             progresoCartas: state.progresoCarta,
-            cartasEspecialesUsadas: state.cartasEspecialesUsadas || 0
+            cartasEspecialesUsadas: state.cartasEspecialesUsadas || 0,
+            puntosEspeciales: state.playersData[state.myId]?.puntosEspeciales || []
         };
     }
 }
@@ -822,6 +835,11 @@ export function repartirCartas() {
     state.progresoCarta = {};
     state.habilidadesUsadas = {};
     state.cartasEspecialesUsadas = 0;
+    
+    // Resetear puntosEspeciales
+    if (state.playersData[state.myId]) {
+        state.playersData[state.myId].puntosEspeciales = [];
+    }
     
     for (let i = 0; i < 4; i++) {
         if (state.mazoColores.length > 0) {
@@ -877,6 +895,12 @@ export function reiniciarTablero() {
     state.cartasJugador = Array(5).fill(null);
     state.cartasEspecialesUsadas = 0;
     state.myTotalScore = 0;
+    
+    // Resetear puntosEspeciales
+    if (state.playersData[state.myId]) {
+        state.playersData[state.myId].puntosEspeciales = [];
+    }
+    
     updateVisuals();
     calculateScores();
     renderCartasJugador();

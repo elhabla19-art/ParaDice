@@ -22,7 +22,7 @@ export function renderLeaderboard() {
         const card = document.createElement('div');
         card.className = 'player-card ' + (isMe ? 'me' : '');
         
-        // ----- TICKETS Y EXTRAS EN UNA LÍNEA -----
+        // ----- TICKETS Y PUNTOS EXTRA EN UNA LÍNEA -----
         let ticketsHtml = '<div class="mini-tickets">';
         let tieneTickets = false;
         
@@ -54,16 +54,19 @@ export function renderLeaderboard() {
             `;
         }
         
-        const especialesUsadas = p.cartasEspecialesUsadas || 0;
-        if (especialesUsadas > 0) {
+        // ----- PUNTOS EXTRA DE CARTAS ESPECIALES (SOLO TAGS INDIVIDUALES) -----
+        if (p.puntosEspeciales && p.puntosEspeciales.length > 0) {
             tieneTickets = true;
-            const bonusExtra = especialesUsadas * 5;
-            ticketsHtml += `
-                <span class="mini-ticket" style="border-color: #ff9800; background: rgba(255,152,0,0.1);">
-                    ⭐ Especiales (+${bonusExtra}pts)
-                </span>
-            `;
+            p.puntosEspeciales.forEach(puntos => {
+                ticketsHtml += `
+                    <span class="mini-ticket puntos-extra" style="border-color: #555; background: rgba(85,85,85,0.15);">
+                        +${puntos} pts
+                    </span>
+                `;
+            });
         }
+        
+        // ----- ELIMINADO: Tag "Especiales: X" -----
         
         if (!tieneTickets) {
             ticketsHtml += '<span class="mini-ticket vacio">Sin tickets</span>';

@@ -7,6 +7,7 @@ import { showLoading, hideLoading, mostrarMensaje, getPlayerName } from './utils
 import { generarMazos, renderBoard, updateVisuals, renderCartasVisibles, renderCartasJugador } from './mazos-tablero.js';
 import { calculateScores, actualizarBotonEspecial } from './juego.js';
 import { renderLeaderboard } from './leaderboard.js';
+import { renderStatusPanel } from './panel.js';
 
 // ============================================
 // FUNCIONES DE RENDER - IMPORTADAS DINÁMICAMENTE
@@ -16,12 +17,6 @@ let renderStatusPanelFn = null;
 
 export function setRenderStatusPanel(fn) {
     renderStatusPanelFn = fn;
-}
-
-function renderStatusPanel() {
-    if (renderStatusPanelFn) {
-        renderStatusPanelFn();
-    }
 }
 
 // ============================================
@@ -58,7 +53,8 @@ export function connectToRoom(code) {
             tablero: state.tableroGlobal,
             fichas: state.fichas,
             progresoCartas: state.progresoCarta,
-            cartasEspecialesUsadas: state.cartasEspecialesUsadas || 0
+            cartasEspecialesUsadas: state.cartasEspecialesUsadas || 0,
+            puntosEspeciales: [] // Inicializar array de puntos especiales
         };
         
         joinSuccess(code);
@@ -76,6 +72,7 @@ export function connectToRoom(code) {
                 state.bonusTicket = data.bonusTicket || null;
                 state.bonusReclamado = data.bonusReclamado || false;
                 renderLeaderboard();
+                renderStatusPanel();
                 return;
             }
 
@@ -117,9 +114,11 @@ export function connectToRoom(code) {
                 tablero: data.tablero || state.tableroGlobal,
                 fichas: data.fichas || state.fichas,
                 progresoCartas: data.progresoCartas || {},
-                cartasEspecialesUsadas: data.cartasEspecialesUsadas || 0
+                cartasEspecialesUsadas: data.cartasEspecialesUsadas || 0,
+                puntosEspeciales: data.puntosEspeciales || [] // Recibir puntos especiales del jugador remoto
             };
             renderLeaderboard();
+            renderStatusPanel();
 
             if (data.action === 'join') {
                 setTimeout(() => {
@@ -209,7 +208,8 @@ export function broadcastScore(action = 'sync') {
             tablero: state.tableroGlobal,
             fichas: state.fichas,
             progresoCartas: state.progresoCarta,
-            cartasEspecialesUsadas: state.cartasEspecialesUsadas || 0
+            cartasEspecialesUsadas: state.cartasEspecialesUsadas || 0,
+            puntosEspeciales: state.playersData[state.myId]?.puntosEspeciales || [] // Incluir puntos especiales en el broadcast
         });
         state.mqttClient.publish(topic, payload);
     }
@@ -279,7 +279,8 @@ export function playSolo() {
         tablero: state.tableroGlobal,
         fichas: state.fichas,
         progresoCartas: {},
-        cartasEspecialesUsadas: 0
+        cartasEspecialesUsadas: 0,
+        puntosEspeciales: [] // Inicializar puntos especiales en modo solo
     };
     generarMazos();
     renderBoard();

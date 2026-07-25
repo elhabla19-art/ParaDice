@@ -152,4 +152,26 @@ export function initState() {
     state.myTotalScore = 0;
     state.cartasRepartidas = false;
     state.moveHistory = [];
+    
+    // Inicializar puntosEspeciales para el jugador actual
+    if (!state.playersData[state.myId]) {
+        state.playersData[state.myId] = {
+            name: state.myName,
+            score: 0,
+            cartasJugador: state.cartasJugador,
+            cartasTerminadas: state.cartasTerminadas,
+            habilidadesUsadas: state.habilidadesUsadas,
+            mazoColores: state.mazoColores,
+            mazoEspecialDisponible: state.mazoEspecialDisponible,
+            cartasVisibles: state.cartasVisibles,
+            cartasRepartidas: false,
+            tablero: state.tableroGlobal,
+            fichas: state.fichas,
+            progresoCartas: state.progresoCarta,
+            cartasEspecialesUsadas: 0,
+            puntosEspeciales: [] // Array para almacenar los puntos de cartas especiales usadas
+        };
+    } else {
+        state.playersData[state.myId].puntosEspeciales = [];
+    }
 }
