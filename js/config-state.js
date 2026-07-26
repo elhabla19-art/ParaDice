@@ -79,12 +79,12 @@ export const CARTAS_ESPECIALES = [
 
 // Tickets
 export const TICKETS = {
-    celeste: { nombre: 'Ticket Celeste', puntaje: 10, icono: 'Imagenes/Tickets/celeste.png' },
-    lima: { nombre: 'Ticket Lima', puntaje: 10, icono: 'Imagenes/Tickets/lima.png' },
-    naranja: { nombre: 'Ticket Naranja', puntaje: 10, icono: 'Imagenes/Tickets/naranja.png' },
-    purpura: { nombre: 'Ticket Purpura', puntaje: 10, icono: 'Imagenes/Tickets/purpura.png' },
-    rosa: { nombre: 'Ticket Rosa', puntaje: 10, icono: 'Imagenes/Tickets/rosa.png' },
-    bonus: { nombre: 'Ticket Bonus', puntaje: 20, icono: 'Imagenes/Tickets/Bonus.png' }
+    celeste: { nombre: 'Ticket Celeste', puntaje: 10 },
+    lima: { nombre: 'Ticket Lima', puntaje: 10 },
+    naranja: { nombre: 'Ticket Naranja', puntaje: 10 },
+    purpura: { nombre: 'Ticket Purpura', puntaje: 10 },
+    rosa: { nombre: 'Ticket Rosa', puntaje: 10 },
+    bonus: { nombre: 'Ticket Bonus', puntaje: 20 }
 };
 
 // Estado del juego

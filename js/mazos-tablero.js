@@ -19,7 +19,7 @@ export function generarMazos() {
                 color: color,
                 numero: i,
                 tipo: 'color',
-                imagen: `Imagenes/${nombreCarpeta}/${color}${i}.png`
+                imagen: `Imagenes/${nombreCarpeta}/${nombreCarpeta}${i}.png`  // ← Mayúscula en archivo
             });
         }
     });
