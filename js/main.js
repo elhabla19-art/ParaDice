@@ -27,6 +27,7 @@ import {
 } from './mqtt.js';
 import { toggleLeaderboard, abrirZoomLeaderboardDesdeCard, renderLeaderboard, refrescarSincronizacion } from './leaderboard.js';
 import { renderStatusPanel } from './panel.js';
+import { abrirCompletas, cerrarCompletas, verHistorial, cerrarHistorial, activarHabilidadDesdeCompletas, abrirZoomTerminadaDesdeCompletas, abrirCompletasDeJugador, verHistorialDeJugador } from './completas.js';
 
 // ============================================
 // INICIALIZACIÓN
@@ -77,10 +78,21 @@ function init() {
     window.cerrarPodio = cerrarPodio;
     window.refrescarSincronizacion = refrescarSincronizacion;
     
+    // Funciones de completas
+    window.abrirCompletas = abrirCompletas;
+    window.cerrarCompletas = cerrarCompletas;
+    window.verHistorial = verHistorial;
+    window.cerrarHistorial = cerrarHistorial;
+    window.activarHabilidadDesdeCompletas = activarHabilidadDesdeCompletas;
+    window.abrirZoomTerminadaDesdeCompletas = abrirZoomTerminadaDesdeCompletas;
+    window.abrirCompletasDeJugador = abrirCompletasDeJugador;
+    window.verHistorialDeJugador = verHistorialDeJugador;
+    
     console.log('ParaDice - Iniciado');
     console.log(`Cartas en mazo: ${state.mazoColores.length}`);
     console.log(`Cartas especiales: ${state.mazoEspecialDisponible.length}`);
     console.log('Completa una carta Lima y usa su habilidad para desbloquear Cartas Especiales');
+    console.log('Haz clic en el panel de estado para ver tus cartas completadas');
 }
 
 // ============================================
@@ -88,6 +100,14 @@ function init() {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', init);
+
+// Evento para abrir completas al hacer clic en el panel de estado
+document.addEventListener('click', function(event) {
+    const panel = document.getElementById('status-panel-content');
+    if (panel && panel.contains(event.target)) {
+        abrirCompletas();
+    }
+});
 
 document.addEventListener('click', function(event) {
     const modal = document.getElementById('zoomModal');
@@ -109,12 +129,24 @@ document.addEventListener('click', function(event) {
     if (modal && event.target === modal) cerrarPodio();
 });
 
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('completasModal');
+    if (modal && event.target === modal) cerrarCompletas();
+});
+
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('historialModal');
+    if (modal && event.target === modal) cerrarHistorial();
+});
+
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         cerrarZoom();
         cerrarHabilidad();
         cerrarEspecial();
         cerrarPodio();
+        cerrarCompletas();
+        cerrarHistorial();
     }
 });
 
@@ -146,5 +178,13 @@ export {
     actualizarBotonEspecial,
     renderStatusPanel,
     cerrarPodio,
-    refrescarSincronizacion
+    refrescarSincronizacion,
+    abrirCompletas,
+    cerrarCompletas,
+    verHistorial,
+    cerrarHistorial,
+    activarHabilidadDesdeCompletas,
+    abrirZoomTerminadaDesdeCompletas,
+    abrirCompletasDeJugador,
+    verHistorialDeJugador
 };

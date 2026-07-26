@@ -10,6 +10,7 @@ import { calculateScores } from './juego.js';
 import { renderBoard, updateVisuals, renderCartasVisibles, renderCartasJugador } from './mazos-tablero.js';
 import { renderStatusPanel } from './panel.js';
 import { mostrarMensaje } from './utils.js';
+import { abrirCompletasDeJugador } from './completas.js';
 
 // RENDERIZAR LEADERBOARD
 export function renderLeaderboard() {
@@ -181,8 +182,10 @@ export function renderLeaderboard() {
             });
             
             statsHtml += `
-                <span class="stat-color" style="color: ${colorHex}; ${decoracion}">
-                    ● ${total} (${puntajeMostrar}pts) ${disponibles.length} hab.
+                <span class="stat-color" style="color: ${colorHex}; ${decoracion} cursor: pointer;" 
+                      onclick="window.abrirCompletasDeJugador('${p.id}', '${color}')"
+                      title="Ver completas de ${color}">
+                    ● ${total} (${puntajeMostrar}pts) ${disponibles.length}h
                 </span>
             `;
         });
@@ -298,3 +301,6 @@ export function refrescarSincronizacion() {
         mostrarMensaje('Vista actualizada', 'info');
     }
 }
+
+// EXPONER FUNCIONES GLOBALES
+window.abrirCompletasDeJugador = abrirCompletasDeJugador;

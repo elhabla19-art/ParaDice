@@ -19,7 +19,7 @@ export function generarMazos() {
                 color: color,
                 numero: i,
                 tipo: 'color',
-                imagen: `Imagenes/${nombreCarpeta}/${nombreCarpeta}${i}.png`  // ← Mayúscula en archivo
+                imagen: `Imagenes/${nombreCarpeta}/${nombreCarpeta}${i}.png`
             });
         }
     });
@@ -214,61 +214,6 @@ export function renderCartasJugador() {
             manoContainer.appendChild(div);
         });
     }
-    
-    // Renderizar terminadas - Siempre con todos los colores (0 inicial)
-    const terminadasContainer = document.getElementById('terminadas-container');
-    if (!terminadasContainer) return;
-    
-    terminadasContainer.innerHTML = '';
-    
-    // Agrupar cartas terminadas por color
-    const coloresMap = {};
-    state.cartasTerminadas.forEach(carta => {
-        if (!coloresMap[carta.color]) {
-            coloresMap[carta.color] = [];
-        }
-        coloresMap[carta.color].push(carta);
-    });
-    
-    const colorHex = {
-        celeste: '#4fc3f7',
-        lima: '#aed581',
-        naranja: '#ffb74d',
-        purpura: '#ce93d8',
-        rosa: '#f06292'
-    };
-    
-    // Mostrar todos los colores, incluso con 0
-    COLORES.forEach(color => {
-        const cartas = coloresMap[color] || [];
-        const total = cartas.length;
-        const disponibles = cartas.filter(c => state.habilidadesUsadas[c.id] !== true);
-        const colorHexValue = colorHex[color] || '#888';
-        
-        const item = document.createElement('div');
-        item.className = 'terminada-item';
-        
-        const btnHtml = disponibles.length > 0 ? 
-            `<button class="btn-activar" onclick="window.usarHabilidadPorColor('${color}')">Activar</button>` :
-            `<button class="btn-activar usado" disabled>Usada</button>`;
-        
-        // Si no hay cartas, mostrar 0 y sin botón
-        const displayHtml = total === 0 ? 
-            `<span class="vacio-text">0</span>` :
-            `<span class="info">
-                <span class="num">${total}</span>
-                <span>terminadas</span>
-                <span style="color: #4caf50;">${disponibles.length} disp.</span>
-            </span>`;
-        
-        item.innerHTML = `
-            <span class="dot" style="background: ${colorHexValue};"></span>
-            ${total === 0 ? `<span class="vacio-text">${color.substring(0,2)}: 0</span>` : displayHtml}
-            ${total > 0 ? btnHtml : ''}
-        `;
-        
-        terminadasContainer.appendChild(item);
-    });
 }
 
 // USAR HABILIDAD POR COLOR

@@ -118,6 +118,34 @@
     </div>
 
     <!-- ============================================ -->
+    <!-- MODAL DE COMPLETAS -->
+    <!-- ============================================ -->
+    <div id="completasModal" class="modal-overlay" style="display: none; z-index: 4500;">
+        <div class="modal-box" style="max-width: 520px; background: rgba(0,0,0,0.95);">
+            <div style="text-align: right; margin-bottom: 10px;">
+                <button onclick="window.cerrarCompletas()" style="background: transparent; border: none; color: white; font-size: 2rem; cursor: pointer; padding: 0 10px;">X</button>
+            </div>
+            <div id="completasContent">
+                <!-- Generado por JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL DE HISTORIAL -->
+    <!-- ============================================ -->
+    <div id="historialModal" class="modal-overlay" style="display: none; z-index: 4500;">
+        <div class="modal-box" style="max-width: 450px; background: rgba(0,0,0,0.95);">
+            <div style="text-align: right; margin-bottom: 10px;">
+                <button onclick="window.cerrarHistorial()" style="background: transparent; border: none; color: white; font-size: 2rem; cursor: pointer; padding: 0 10px;">X</button>
+            </div>
+            <div id="historialContent">
+                <!-- Generado por JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
     <!-- UI DEL JUEGO -->
     <!-- ============================================ -->
     <header>
@@ -172,17 +200,12 @@
                     <div class="carta-jugador vacia" data-index="3">Vacio</div>
                     <div class="carta-jugador vacia" data-index="4">Vacio</div>
                 </div>
-
-                <!-- Terminadas -->
-                <div id="terminadas-container" class="terminadas-compact">
-                    <!-- Generado por JavaScript -->
-                </div>
             </div>
         </div>
 
         <!-- PANEL LATERAL -->
         <div class="side-panel">
-            <!-- Panel de Estado -->
+            <!-- Panel de Estado (clickeable para abrir completas) -->
             <div class="status-panel">
                 <div id="status-panel-content" class="status-grid">
                     <!-- Generado por JavaScript -->

@@ -362,61 +362,6 @@ h1 { font-size: 2rem; font-weight: 800; letter-spacing: 2px; text-transform: upp
     font-weight: bold;
 }
 
-.terminadas-compact {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 140px;
-    max-width: 180px;
-    justify-content: flex-start;
-}
-
-.terminada-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    background: var(--bg-box);
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-    font-size: 0.65rem;
-    height: 30px;
-    flex-shrink: 0;
-}
-
-.terminada-item .dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.terminada-item .info {
-    flex: 1;
-    display: flex;
-    gap: 5px;
-    align-items: center;
-    color: var(--text-muted);
-    font-size: 0.6rem;
-}
-.terminada-item .info .num { color: #fff; font-weight: bold; }
-
-.terminada-item .btn-activar {
-    background: #4caf50;
-    color: white;
-    border: none;
-    padding: 2px 8px;
-    border-radius: 3px;
-    font-size: 0.5rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.terminada-item .btn-activar:hover { transform: scale(1.05); }
-.terminada-item .btn-activar.usado { background: #444; opacity: 0.5; cursor: not-allowed; }
-.terminada-item .btn-activar.usado:hover { transform: none; }
-.terminada-item .vacio-text { color: #555; font-style: italic; font-size: 0.55rem; }
-
 /* PANEL DE ESTADO */
 .side-panel {
     display: flex;
@@ -431,6 +376,11 @@ h1 { font-size: 2rem; font-weight: 800; letter-spacing: 2px; text-transform: upp
     border-radius: 16px;
     width: 100%;
     border: 1px solid var(--border-color);
+    transition: background 0.2s;
+}
+
+.status-panel:hover {
+    background: rgba(255,255,255,0.03);
 }
 
 .status-grid {
@@ -471,14 +421,6 @@ h1 { font-size: 2rem; font-weight: 800; letter-spacing: 2px; text-transform: upp
     width: 100%;
 }
 
-.status-item-tickets {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
 .status-ticket-dot {
     width: 14px;
     height: 14px;
@@ -487,14 +429,6 @@ h1 { font-size: 2rem; font-weight: 800; letter-spacing: 2px; text-transform: upp
     flex-shrink: 0;
 }
 .status-ticket-dot.bonus-dot { border-color: #ffd700; }
-
-.status-item-extras {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
 
 .status-extra {
     font-size: 0.7rem;
@@ -534,6 +468,44 @@ h1 { font-size: 2rem; font-weight: 800; letter-spacing: 2px; text-transform: upp
 }
 .leaderboard-header:hover { background: rgba(255,255,255,0.05); }
 .leaderboard-header h3 { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-refrescar {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    line-height: 1.4;
+    font-weight: bold;
+    min-width: 24px;
+    text-align: center;
+}
+.btn-refrescar:hover {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    border-color: #666;
+}
+.btn-refrescar:active {
+    transform: scale(0.95);
+}
+.btn-refrescar.refrescando {
+    animation: girar 0.6s linear;
+}
+
+@keyframes girar {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 #toggleIcon { color: var(--text-muted); font-size: 0.65rem; }
 
 .leaderboard-content {
@@ -688,9 +660,6 @@ h1 { font-size: 2rem; font-weight: 800; letter-spacing: 2px; text-transform: upp
     .btn-control { padding: 4px 12px; font-size: 0.65rem; }
     .info-mazo { font-size: 0.6rem; padding: 3px 8px; }
     .cartas-grid { flex-direction: column; gap: 8px; }
-    .terminadas-compact { min-width: unset; max-width: 100%; flex-direction: row; flex-wrap: wrap; }
-    .terminada-item { flex: 1; min-width: 60px; font-size: 0.5rem; height: 24px; padding: 2px 6px; }
-    .terminada-item .dot { width: 8px; height: 8px; }
     .box { aspect-ratio: 1 / 0.7; font-size: min(3vw, 0.8rem); min-height: 20px; }
     .status-row { grid-template-columns: 1fr 1fr 1fr 1.2fr; gap: 4px; }
     .status-item-color { font-size: 0.6rem; }
@@ -732,9 +701,6 @@ h1 { font-size: 2rem; font-weight: 800; letter-spacing: 2px; text-transform: upp
     .jugador-cartas-container { padding: 4px 6px; }
     .cartas-header { margin-bottom: 4px; }
     .cartas-grid { flex-direction: row; }
-    .terminadas-compact { min-width: 70px; max-width: 100px; }
-    .terminada-item { font-size: 0.4rem; padding: 2px 4px; height: 18px; }
-    .terminada-item .dot { width: 5px; height: 5px; }
     .mini-carta-mano { width: 28px; height: 36px; }
     .mini-casilla { width: 14px; height: 5px; }
     .player-stats-line { font-size: 0.45rem; gap: 2px 4px; }
