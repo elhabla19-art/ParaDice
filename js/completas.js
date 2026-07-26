@@ -87,7 +87,31 @@ export function abrirCompletas() {
         `;
     });
 
+    // Resumen de habilidades
     html += `
+        </div>
+        <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; margin-top: 10px;">
+            <div style="font-size: 0.7rem; color: #888; text-align: center; margin-bottom: 6px;">Resumen de Habilidades</div>
+            <div style="display: flex; flex-direction: column; gap: 3px; font-size: 0.6rem; color: #aaa;">
+    `;
+
+    COLORES.forEach(color => {
+        const habilidad = HABILIDADES[color];
+        if (habilidad) {
+            const hex = colorHex[color] || '#888';
+            html += `
+                <div style="display: flex; align-items: center; gap: 6px; padding: 2px 6px; background: rgba(255,255,255,0.03); border-radius: 3px;">
+                    <span style="color: ${hex}; font-weight: bold;">•</span>
+                    <span style="color: ${hex}; font-weight: bold; text-transform: capitalize;">${color}:</span>
+                    <span style="color: #ccc;">${habilidad.nombre}</span>
+                    <span style="color: #666; font-size: 0.55rem;">- ${habilidad.descripcion}</span>
+                </div>
+            `;
+        }
+    });
+
+    html += `
+            </div>
         </div>
         <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; margin-top: 12px;">
             <button onclick="window.cerrarCompletas()" 
@@ -152,17 +176,17 @@ export function verHistorial(color) {
 
     cartasColor.forEach(carta => {
         const usada = player.habilidadesUsadas?.[carta.id] || false;
-        const habilidad = HABILIDADES[carta.color];
         html += `
             <div onclick="window.abrirZoomTerminadaDesdeCompletas('${carta.id}')" 
-                 style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px 12px; cursor: pointer; transition: all 0.2s; text-align: center; min-width: 60px;"
+                 style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px; cursor: pointer; transition: all 0.2s; text-align: center; width: 70px;"
                  onmouseover="this.style.background='rgba(255,255,255,0.15)'" 
                  onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                <div style="font-size: 0.9rem; font-weight: bold; color: #fff;">N°${carta.numero}</div>
-                <div style="font-size: 0.6rem; color: ${usada ? '#666' : '#4caf50'};">
+                <img src="${carta.imagen}" alt="Carta ${carta.numero}" 
+                     style="width: 60px; height: 80px; object-fit: contain; border-radius: 4px; display: block; margin: 0 auto;"
+                     onerror="this.style.display='none'; this.parentElement.innerHTML += '<div style=\\'font-size:0.7rem;color:#888;\\'>N°${carta.numero}</div>'">
+                <div style="font-size: 0.5rem; color: ${usada ? '#666' : '#4caf50'}; margin-top: 2px;">
                     ${usada ? 'Usada' : 'Disponible'}
                 </div>
-                ${habilidad ? `<div style="font-size: 0.6rem; color: ${habilidad.color};">${habilidad.icono}</div>` : ''}
             </div>
         `;
     });
@@ -235,7 +259,10 @@ export function abrirZoomTerminadaDesdeCompletas(cartaId) {
         return;
     }
 
+    // Cerrar ambos modales antes de abrir zoom
     cerrarHistorial();
+    cerrarCompletas();
+    
     abrirZoomTerminada(carta);
 }
 
@@ -346,17 +373,17 @@ export function verHistorialDeJugador(jugadorId, color) {
 
     cartasColor.forEach(carta => {
         const usada = player.habilidadesUsadas?.[carta.id] || false;
-        const habilidad = HABILIDADES[carta.color];
         html += `
             <div onclick="window.abrirZoomTerminadaDesdeCompletas('${carta.id}')" 
-                 style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px 12px; cursor: pointer; transition: all 0.2s; text-align: center; min-width: 60px;"
+                 style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px; cursor: pointer; transition: all 0.2s; text-align: center; width: 70px;"
                  onmouseover="this.style.background='rgba(255,255,255,0.15)'" 
                  onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                <div style="font-size: 0.9rem; font-weight: bold; color: #fff;">N°${carta.numero}</div>
-                <div style="font-size: 0.6rem; color: ${usada ? '#666' : '#4caf50'};">
+                <img src="${carta.imagen}" alt="Carta ${carta.numero}" 
+                     style="width: 60px; height: 80px; object-fit: contain; border-radius: 4px; display: block; margin: 0 auto;"
+                     onerror="this.style.display='none'; this.parentElement.innerHTML += '<div style=\\'font-size:0.7rem;color:#888;\\'>N°${carta.numero}</div>'">
+                <div style="font-size: 0.5rem; color: ${usada ? '#666' : '#4caf50'}; margin-top: 2px;">
                     ${usada ? 'Usada' : 'Disponible'}
                 </div>
-                ${habilidad ? `<div style="font-size: 0.6rem; color: ${habilidad.color};">${habilidad.icono}</div>` : ''}
             </div>
         `;
     });

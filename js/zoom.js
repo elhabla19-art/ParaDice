@@ -17,17 +17,26 @@ function crearCasillas(container, progresoData, carta) {
     const marcadas = progresoData?.marcadas || [];
     const completada = progresoData?.completada || false;
     
+    // Ajustar container para que las casillas estén a la derecha
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.gap = '4px';
+    container.style.alignItems = 'center';
+    container.style.minWidth = '45px';
+    container.style.justifyContent = 'center';
+    container.style.padding = '4px';
+    
     for (let i = 1; i <= 3; i++) {
         const estaMarcada = marcadas.includes(i);
         const div = document.createElement('div');
         div.textContent = estaMarcada ? `${i} ✓` : i;
         div.style.cssText = `
-            width: 50px; height: 50px;
+            width: 45px; height: 45px;
             background: ${estaMarcada ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.1)'};
             border: 2px solid ${estaMarcada ? '#4caf50' : 'rgba(255,255,255,0.2)'};
-            border-radius: 8px;
+            border-radius: 6px;
             display: flex; justify-content: center; align-items: center;
-            font-size: 1.2rem; font-weight: bold;
+            font-size: 0.9rem; font-weight: bold;
             color: ${estaMarcada ? '#4caf50' : '#fff'};
             cursor: ${completada ? 'default' : 'pointer'};
             transition: all 0.2s;
@@ -48,31 +57,6 @@ function crearCasillas(container, progresoData, carta) {
         }
         container.appendChild(div);
     }
-    
-    // Información de progreso
-    const info = document.createElement('div');
-    info.textContent = completada ? '✓ Completada' : `${marcadas.length}/3`;
-    info.style.cssText = `
-        text-align:center; 
-        color:${completada ? '#4caf50' : '#666'}; 
-        font-size:${completada ? '1rem' : '0.7rem'}; 
-        font-weight:${completada ? 'bold' : 'normal'}; 
-        margin-top:5px;
-    `;
-    container.appendChild(info);
-    
-    // Si está completada, mostrar mensaje adicional
-    if (completada) {
-        const msg = document.createElement('div');
-        msg.textContent = '✅ Carta completada';
-        msg.style.cssText = `
-            color: #4caf50;
-            font-size: 0.8rem;
-            font-weight: bold;
-            margin-top: 2px;
-        `;
-        container.appendChild(msg);
-    }
 }
 
 // ============================================
@@ -86,14 +70,27 @@ function abrirZoomBase(carta, esJugador) {
     const casillas = document.getElementById('zoomCasillas');
     if (!modal || !img || !text || !casillas) return null;
     
+    // Limpiar contenido anterior
+    casillas.innerHTML = '';
+    casillas.style.display = 'flex';
+    casillas.style.flexDirection = 'column';
+    casillas.style.gap = '4px';
+    casillas.style.alignItems = 'center';
+    casillas.style.justifyContent = 'center';
+    casillas.style.minWidth = '45px';
+    casillas.style.padding = '4px';
+    
     img.src = carta.imagen || '';
     img.onerror = () => { img.style.display = 'none'; };
     img.style.display = 'block';
+    img.style.maxWidth = '280px';
+    img.style.maxHeight = '400px';
+    img.style.width = 'auto';
+    img.style.height = 'auto';
     
     const puntaje = getPuntajeCarta(carta);
     text.textContent = `${carta.color ? getColorName(carta.color) : 'Especial'} N°${carta.numero} (${puntaje} pts)`;
     
-    casillas.innerHTML = '';
     modal.style.display = 'flex';
     state.cartaSeleccionada = carta;
     
@@ -101,7 +98,7 @@ function abrirZoomBase(carta, esJugador) {
 }
 
 // ============================================
-// ZOOM: VISIBLE
+// ZOOM: VISIBLE (SOLO IMAGEN + BOTÓN AGREGAR)
 // ============================================
 
 export function abrirZoomVisible(carta, indexVisible) {
@@ -109,29 +106,16 @@ export function abrirZoomVisible(carta, indexVisible) {
     if (!result) return;
     const { casillas } = result;
     
-    for (let i = 1; i <= 3; i++) {
-        const div = document.createElement('div');
-        div.textContent = i;
-        div.style.cssText = `
-            width:50px; height:50px; 
-            background:rgba(255,255,255,0.1); 
-            border:2px solid rgba(255,255,255,0.2); 
-            border-radius:8px; 
-            display:flex; justify-content:center; align-items:center; 
-            font-size:1.2rem; font-weight:bold; 
-            color:#fff; cursor:default;
-        `;
-        casillas.appendChild(div);
-    }
-    
+    // Mostrar solo puntaje y botón, sin casillas
     const pts = document.createElement('div');
     pts.textContent = `⭐ ${getPuntajeCarta(carta)} pts`;
     pts.style.cssText = `
         color:#ffd700; 
-        font-size:0.8rem; 
+        font-size:0.9rem; 
         font-weight:bold; 
         text-align:center; 
-        margin-top:2px;
+        margin-bottom: 8px;
+        width:100%;
     `;
     casillas.appendChild(pts);
     
@@ -141,13 +125,13 @@ export function abrirZoomVisible(carta, indexVisible) {
         background:#4caf50; 
         color:white; 
         border:none; 
-        padding:10px 25px; 
-        border-radius:8px; 
-        font-size:1rem; 
+        padding:10px 20px; 
+        border-radius:6px; 
+        font-size:0.9rem; 
         font-weight:bold; 
         cursor:pointer; 
         width:100%; 
-        margin-top:10px;
+        margin-top:4px;
     `;
     btn.onclick = () => agregarCartaAJugador(indexVisible);
     casillas.appendChild(btn);
@@ -175,53 +159,32 @@ export function actualizarZoomJugador(carta) {
 }
 
 // ============================================
-// ZOOM: TERMINADA
+// ZOOM: TERMINADA (SOLO CARTA - SIN TEXTO)
 // ============================================
 
 export function abrirZoomTerminada(carta) {
-    const result = abrirZoomBase(carta, false);
-    if (!result) return;
-    const { casillas } = result;
+    const modal = document.getElementById('zoomModal');
+    const img = document.getElementById('zoomImage');
+    const text = document.getElementById('zoomText');
+    const casillas = document.getElementById('zoomCasillas');
+    if (!modal || !img || !text || !casillas) return;
     
-    for (let i = 1; i <= 3; i++) {
-        const div = document.createElement('div');
-        div.textContent = `${i} ✓`;
-        div.style.cssText = `
-            width:50px; height:50px; 
-            background:rgba(76,175,80,0.3); 
-            border:2px solid #4caf50; 
-            border-radius:8px; 
-            display:flex; justify-content:center; align-items:center; 
-            font-size:1.2rem; font-weight:bold; 
-            color:#4caf50; cursor:default;
-        `;
-        casillas.appendChild(div);
-    }
+    // Limpiar contenido anterior
+    casillas.innerHTML = '';
+    casillas.style.display = 'none'; // Ocultar casillas completamente
     
-    const habilidad = HABILIDADES[carta.color];
-    const usada = isHabilidadUsada(carta);
-    const info = document.createElement('div');
-    info.style.cssText = `
-        text-align:center; 
-        margin-top:10px; 
-        width:100%; 
-        padding:10px; 
-        background:rgba(255,255,255,0.05); 
-        border-radius:8px;
-    `;
-    info.innerHTML = habilidad ? `
-        <div style="font-size:1.5rem;">${habilidad.icono}</div>
-        <div style="font-weight:bold; color:${habilidad.color};">${habilidad.nombre}</div>
-        <div style="font-size:0.8rem; color:#aaa;">${habilidad.descripcion}</div>
-        <div style="font-size:0.8rem; margin-top:4px; color:${usada ? '#666' : '#4caf50'}; font-weight:bold;">
-            ${usada ? '✓ Usada' : '✨ Disponible'}
-        </div>
-        ${!usada ? `<button onclick="window.usarHabilidadDesdeZoom('${carta.id}')" 
-                    style="margin-top:8px; background:#4caf50; color:white; border:none; padding:6px 20px; border-radius:6px; font-size:0.8rem; font-weight:bold; cursor:pointer;">
-                    Usar Habilidad
-                   </button>` : ''}
-    ` : `<div style="color:#888;">Sin habilidad especial</div>`;
-    casillas.appendChild(info);
+    img.src = carta.imagen || '';
+    img.onerror = () => { img.style.display = 'none'; };
+    img.style.display = 'block';
+    img.style.maxWidth = '350px';
+    img.style.maxHeight = '500px';
+    img.style.width = 'auto';
+    img.style.height = 'auto';
+    
+    text.textContent = `${carta.color ? getColorName(carta.color) : 'Especial'} N°${carta.numero}`;
+    
+    modal.style.display = 'flex';
+    state.cartaSeleccionada = carta;
 }
 
 // ============================================
@@ -257,35 +220,24 @@ export function abrirZoomLeaderboard(carta, playerName, jugadorId) {
         const div = document.createElement('div');
         div.textContent = estaMarcada ? `${i} ✓` : i;
         div.style.cssText = `
-            width:50px; height:50px; 
-            background:${estaMarcada ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.1)'}; 
-            border:2px solid ${estaMarcada ? '#4caf50' : 'rgba(255,255,255,0.2)'}; 
-            border-radius:8px; 
-            display:flex; justify-content:center; align-items:center; 
-            font-size:1.2rem; font-weight:bold; 
-            color:${estaMarcada ? '#4caf50' : '#fff'}; 
-            cursor:default;
+            width: 45px; height: 45px;
+            background: ${estaMarcada ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.1)'};
+            border: 2px solid ${estaMarcada ? '#4caf50' : 'rgba(255,255,255,0.2)'};
+            border-radius: 6px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 0.9rem; font-weight: bold;
+            color: ${estaMarcada ? '#4caf50' : '#fff'};
+            cursor: default;
         `;
         casillas.appendChild(div);
     }
-    
-    const info = document.createElement('div');
-    info.textContent = completada ? '✓ Completada' : `${marcadas.length}/3`;
-    info.style.cssText = `
-        text-align:center; 
-        color:${completada ? '#4caf50' : '#666'}; 
-        font-size:${completada ? '1rem' : '0.7rem'}; 
-        font-weight:${completada ? 'bold' : 'normal'}; 
-        margin-top:5px;
-    `;
-    casillas.appendChild(info);
     
     // Indicador de solo vista
     const msg = document.createElement('div');
     msg.textContent = '🔒 Solo vista';
     msg.style.cssText = `
         color:#666; 
-        font-size:0.65rem; 
+        font-size:0.7rem; 
         text-align:center; 
         margin-top:6px; 
         font-style:italic; 
@@ -304,8 +256,23 @@ export function cerrarZoom() {
     const modal = document.getElementById('zoomModal');
     const casillas = document.getElementById('zoomCasillas');
     if (modal) modal.style.display = 'none';
-    if (casillas) casillas.innerHTML = '';
+    if (casillas) {
+        casillas.innerHTML = '';
+        casillas.style.display = 'flex'; // Restaurar display
+    }
     state.cartaSeleccionada = null;
+    
+    // Restaurar historial si estaba activo
+    if (window._historialState && window._historialState.activo) {
+        const estado = window._historialState;
+        if (estado.modo === 'local') {
+            window.verHistorial(estado.color);
+        } else if (estado.modo === 'remoto') {
+            window.verHistorialDeJugador(estado.jugadorId, estado.color);
+        }
+        // Limpiar estado después de restaurar
+        window._historialState = { activo: false, color: null, jugadorId: null, modo: null };
+    }
 }
 
 // ============================================
