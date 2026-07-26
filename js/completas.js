@@ -35,6 +35,7 @@ export function abrirCompletas() {
     let html = `
         <div style="text-align: center; margin-bottom: 15px;">
             <h2 style="color: #fff; font-size: 1.2rem;">Mis Casetas Completas</h2>
+            <p style="color: #666; font-size: 0.7rem; margin-top: 4px;">Haz clic en cualquier color para ver su historial</p>
         </div>
         <div style="display: flex; flex-direction: column; gap: 6px;">
     `;
@@ -57,22 +58,19 @@ export function abrirCompletas() {
         const tieneHabilidad = HABILIDADES[color] !== undefined;
 
         html += `
-            <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; border-left: 3px solid ${hex};">
+            <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; border-left: 3px solid ${hex}; cursor: pointer;" 
+                 onclick="window.verHistorial('${color}')"
+                 onmouseover="this.style.background='rgba(255,255,255,0.1)'" 
+                 onmouseout="this.style.background='rgba(255,255,255,0.05)'">
                 <span style="font-size: 1.5rem; color: ${hex};">•</span>
                 <span style="flex: 1; color: #fff; font-size: 0.85rem;">
-                    Terminadas: <strong>${total}</strong>
+                    Completas: <strong>${total}</strong>
                 </span>
-                <span style="color: #aaa; font-size: 0.85rem;">
+                <span style="color: #fff; font-size: 0.85rem;">
                     Habilidades: <strong style="color: ${habilidadesDisponibles > 0 ? '#4caf50' : '#666'};">${habilidadesDisponibles}</strong>
                 </span>
-                <button onclick="window.verHistorial('${color}')" 
-                        style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; transition: all 0.2s;"
-                        onmouseover="this.style.background='rgba(255,255,255,0.2)'" 
-                        onmouseout="this.style.background='rgba(255,255,255,0.1)'">
-                    Historial
-                </button>
                 ${tieneHabilidad && habilidadesDisponibles > 0 ? `
-                    <button onclick="window.activarHabilidadDesdeCompletas('${color}')" 
+                    <button onclick="event.stopPropagation(); window.activarHabilidadDesdeCompletas('${color}')" 
                             style="background: #4caf50; border: none; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; cursor: pointer; transition: all 0.2s;"
                             onmouseover="this.style.background='#45a049'" 
                             onmouseout="this.style.background='#4caf50'">
@@ -92,7 +90,7 @@ export function abrirCompletas() {
         </div>
         <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; margin-top: 10px;">
             <div style="font-size: 0.7rem; color: #888; text-align: center; margin-bottom: 6px;">Resumen de Habilidades</div>
-            <div style="display: flex; flex-direction: column; gap: 3px; font-size: 0.6rem; color: #aaa;">
+            <div style="display: flex; flex-direction: column; gap: 3px; font-size: 0.6rem; color: #aaa; text-align: left; padding: 0 4px;">
     `;
 
     COLORES.forEach(color => {
@@ -100,11 +98,10 @@ export function abrirCompletas() {
         if (habilidad) {
             const hex = colorHex[color] || '#888';
             html += `
-                <div style="display: flex; align-items: center; gap: 6px; padding: 2px 6px; background: rgba(255,255,255,0.03); border-radius: 3px;">
-                    <span style="color: ${hex}; font-weight: bold;">•</span>
-                    <span style="color: ${hex}; font-weight: bold; text-transform: capitalize;">${color}:</span>
-                    <span style="color: #ccc;">${habilidad.nombre}</span>
-                    <span style="color: #666; font-size: 0.55rem;">- ${habilidad.descripcion}</span>
+                <div style="display: flex; align-items: center; gap: 6px; padding: 2px 6px; background: rgba(255,255,255,0.03); border-radius: 3px; text-align: left;">
+                    <span style="color: ${hex}; font-weight: bold; font-size: 1.2rem; line-height: 1;">•</span>
+                    <span style="color: #ccc; font-weight: bold; min-width: 65px;">${habilidad.nombre}</span>
+                    <span style="color: #666; font-size: 0.55rem; flex: 1;">- ${habilidad.descripcion}</span>
                 </div>
             `;
         }
@@ -151,6 +148,14 @@ export function verHistorial(color) {
         return;
     }
 
+    // Guardar estado del historial para restaurar después del zoom
+    window._historialState = {
+        activo: true,
+        color: color,
+        jugadorId: jugadorId,
+        modo: 'local'
+    };
+
     const colorHex = {
         celeste: '#4fc3f7',
         lima: '#aed581',
@@ -167,6 +172,7 @@ export function verHistorial(color) {
         <div style="text-align: center; margin-bottom: 12px;">
             <span style="font-size: 1.5rem; color: ${colorHex};">•</span>
             <h3 style="color: #fff; display: inline; margin-left: 8px; font-size: 1.1rem;">${color.charAt(0).toUpperCase() + color.slice(1)} - Historial</h3>
+            <div style="font-size: 0.65rem; color: #666; margin-top: 2px;">Haz clic en una carta para ampliarla</div>
         </div>
         <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-height: 300px; overflow-y: auto; padding: 4px;">
     `;
@@ -212,6 +218,8 @@ export function verHistorial(color) {
 export function cerrarHistorial() {
     const modal = document.getElementById('historialModal');
     if (modal) modal.style.display = 'none';
+    // Limpiar estado del historial
+    window._historialState = { activo: false, color: null, jugadorId: null, modo: null };
 }
 
 // ============================================
@@ -259,7 +267,7 @@ export function abrirZoomTerminadaDesdeCompletas(cartaId) {
         return;
     }
 
-    // Cerrar ambos modales antes de abrir zoom
+    // Cerrar historial y completas antes de abrir zoom
     cerrarHistorial();
     cerrarCompletas();
     
@@ -304,11 +312,12 @@ export function abrirCompletasDeJugador(jugadorId, color) {
     let html = `
         <div style="text-align: center; margin-bottom: 15px;">
             <h2 style="color: #fff; font-size: 1.1rem;">${player.name} - ${color.charAt(0).toUpperCase() + color.slice(1)}</h2>
+            <p style="color: #666; font-size: 0.65rem; margin-top: 2px;">Haz clic en "Ver Historial" para ver las cartas</p>
         </div>
         <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
             <div style="display: flex; gap: 20px; background: rgba(255,255,255,0.05); padding: 10px 20px; border-radius: 8px; border-left: 3px solid ${colorHex};">
-                <span style="color: #fff;">Terminadas: <strong>${total}</strong></span>
-                <span style="color: #aaa;">Habilidades: <strong style="color: ${habilidadesDisponibles > 0 ? '#4caf50' : '#666'};">${habilidadesDisponibles}</strong></span>
+                <span style="color: #fff;">Completas: <strong>${total}</strong></span>
+                <span style="color: #fff;">Habilidades: <strong style="color: ${habilidadesDisponibles > 0 ? '#4caf50' : '#666'};">${habilidadesDisponibles}</strong></span>
             </div>
             ${total > 0 ? `
                 <button onclick="window.verHistorialDeJugador('${jugadorId}', '${color}')" 
@@ -349,6 +358,14 @@ export function verHistorialDeJugador(jugadorId, color) {
         return;
     }
 
+    // Guardar estado del historial para restaurar después del zoom
+    window._historialState = {
+        activo: true,
+        color: color,
+        jugadorId: jugadorId,
+        modo: 'remoto'
+    };
+
     const colorHex = {
         celeste: '#4fc3f7',
         lima: '#aed581',
@@ -365,6 +382,7 @@ export function verHistorialDeJugador(jugadorId, color) {
         <div style="text-align: center; margin-bottom: 12px;">
             <span style="font-size: 1.5rem; color: ${colorHex};">•</span>
             <h3 style="color: #fff; display: inline; margin-left: 8px; font-size: 1.1rem;">${player.name} - ${color.charAt(0).toUpperCase() + color.slice(1)}</h3>
+            <div style="font-size: 0.65rem; color: #666; margin-top: 2px;">Haz clic en una carta para ampliarla</div>
         </div>
         <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-height: 300px; overflow-y: auto; padding: 4px;">
     `;
