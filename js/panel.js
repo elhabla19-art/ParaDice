@@ -146,6 +146,40 @@ export function renderStatusPanel() {
         `;
     }
     
+    // ============================================
+    // INFO DE MOVIMIENTOS (DESHACER)
+    // ============================================
+    // Mostrar cuántos movimientos hay en la pila (solo si hay)
+    import('./deshacer.js').then(({ hayMovimientos, contarMovimientos, peekMovimiento }) => {
+        if (hayMovimientos()) {
+            const ultimo = peekMovimiento();
+            const total = contarMovimientos();
+            // Buscar si ya existe el indicador para no duplicarlo
+            let existingInfo = container.querySelector('.deshacer-info');
+            if (!existingInfo) {
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'deshacer-info';
+                infoDiv.style.cssText = `
+                    margin-top: 4px;
+                    padding: 2px 8px;
+                    background: rgba(255,255,255,0.05);
+                    border-radius: 4px;
+                    text-align: center;
+                    font-size: 0.55rem;
+                    color: #666;
+                    border: 1px solid rgba(255,255,255,0.05);
+                `;
+                container.appendChild(infoDiv);
+                existingInfo = infoDiv;
+            }
+            const esDeMiCarta = ultimo ? ` (${ultimo.color} N°${ultimo.numero})` : '';
+            existingInfo.textContent = `↩️ ${total} movimiento${total > 1 ? 's' : ''} en pila${esDeMiCarta}`;
+        } else {
+            const existingInfo = container.querySelector('.deshacer-info');
+            if (existingInfo) existingInfo.remove();
+        }
+    }).catch(() => {});
+    
     container.innerHTML = html;
 }
 

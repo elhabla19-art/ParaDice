@@ -28,6 +28,19 @@ import {
 import { toggleLeaderboard, abrirZoomLeaderboardDesdeCard, renderLeaderboard, refrescarSincronizacion } from './leaderboard.js';
 import { renderStatusPanel } from './panel.js';
 import { abrirCompletas, cerrarCompletas, verHistorial, cerrarHistorial, activarHabilidadDesdeCompletas, abrirZoomTerminadaDesdeCompletas, abrirCompletasDeJugador, verHistorialDeJugador } from './completas.js';
+import { 
+    pushMovimiento, 
+    eliminarMovimientosDeCarta, 
+    limpiarPilaMovimientos, 
+    intentarDeshacer, 
+    desmarcarCasilla,
+    esUltimoMovimiento,
+    hayMovimientos,
+    peekMovimiento,
+    getUltimoMovimiento,
+    getTodosLosMovimientos,
+    contarMovimientos
+} from './deshacer.js';
 
 // ============================================
 // INICIALIZACIÓN
@@ -87,12 +100,30 @@ function init() {
     window.abrirZoomTerminadaDesdeCompletas = abrirZoomTerminadaDesdeCompletas;
     window.abrirCompletasDeJugador = abrirCompletasDeJugador;
     window.verHistorialDeJugador = verHistorialDeJugador;
+
+    // Funciones de deshacer (para debug y consola)
+    window._debugDeshacer = {
+        push: pushMovimiento,
+        pop: () => { const m = popMovimiento(); if(m) console.log('Pop:', m); return m; },
+        peek: peekMovimiento,
+        hay: hayMovimientos,
+        contar: contarMovimientos,
+        limpiar: () => { limpiarPilaMovimientos(); console.log('Pila limpiada'); },
+        todos: getTodosLosMovimientos,
+        ultimo: getUltimoMovimiento,
+        esUltimo: esUltimoMovimiento,
+        eliminarDeCarta: eliminarMovimientosDeCarta,
+        desmarcar: desmarcarCasilla,
+        intentar: intentarDeshacer
+    };
     
     console.log('ParaDice - Iniciado');
     console.log(`Cartas en mazo: ${state.mazoColores.length}`);
     console.log(`Cartas especiales: ${state.mazoEspecialDisponible.length}`);
     console.log('Completa una carta Lima y usa su habilidad para desbloquear Cartas Especiales');
     console.log('Haz clic en el panel de estado para ver tus cartas completadas');
+    console.log('🔄 Sistema de deshacer: haz clic en la última casilla marcada para desmarcarla');
+    console.log('📊 Para debug: window._debugDeshacer');
 }
 
 // ============================================
@@ -186,5 +217,17 @@ export {
     activarHabilidadDesdeCompletas,
     abrirZoomTerminadaDesdeCompletas,
     abrirCompletasDeJugador,
-    verHistorialDeJugador
+    verHistorialDeJugador,
+    // Funciones de deshacer
+    pushMovimiento,
+    eliminarMovimientosDeCarta,
+    limpiarPilaMovimientos,
+    intentarDeshacer,
+    desmarcarCasilla,
+    esUltimoMovimiento,
+    hayMovimientos,
+    peekMovimiento,
+    getUltimoMovimiento,
+    getTodosLosMovimientos,
+    contarMovimientos
 };

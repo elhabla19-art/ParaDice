@@ -9,6 +9,7 @@ import { cerrarZoom, actualizarZoomJugador } from './zoom.js';
 import { broadcastScore, broadcastTablero, broadcastMazo, broadcastTickets, broadcastJuegoTerminado } from './mqtt.js';
 import { renderLeaderboard } from './leaderboard.js';
 import { renderStatusPanel } from './panel.js';
+import { pushMovimiento, eliminarMovimientosDeCarta, limpiarPilaMovimientos, intentarDeshacer, desmarcarCasilla } from './deshacer.js';
 
 // ============================================
 // FUNCIONES DE PUNTAJE Y HABILIDADES
@@ -532,6 +533,9 @@ export function completarCarta(carta, casillaNumero) {
         return;
     }
     
+    // GUARDAR MOVIMIENTO EN LA PILA (antes de marcar)
+    pushMovimiento(carta.color, carta.numero, casillaNumero);
+    
     // Marcar la casilla
     progreso.marcadas.push(casillaNumero);
     const totalMarcadas = progreso.marcadas.length;
@@ -539,6 +543,9 @@ export function completarCarta(carta, casillaNumero) {
     // Verificar si se completaron las 3 casillas
     if (totalMarcadas === 3) {
         progreso.completada = true;
+        
+        // ELIMINAR MOVIMIENTOS DE ESTA CARTA DE LA PILA
+        eliminarMovimientosDeCarta(key);
         
         // Verificar si la ficha ya está en la meta (casilla 6)
         const posicionActual = state.fichas[carta.color] || 0;
@@ -1364,6 +1371,9 @@ export function repartirCartas() {
         state.playersData[state.myId].puntosEspeciales = [];
     }
     
+    // LIMPIAR PILA DE MOVIMIENTOS AL REPARTIR
+    limpiarPilaMovimientos();
+    
     for (let i = 0; i < 4; i++) {
         if (state.mazoColores.length > 0) {
             state.cartasVisibles[i] = state.mazoColores.pop();
@@ -1416,7 +1426,10 @@ export function reiniciarTodo() {
     // 2. Regenerar mazos
     generarMazos();
     
-    // 3. Reiniciar datos del jugador en playersData
+    // 3. LIMPIAR PILA DE MOVIMIENTOS
+    limpiarPilaMovimientos();
+    
+    // 4. Reiniciar datos del jugador en playersData
     if (state.playersData[state.myId]) {
         state.playersData[state.myId] = {
             name: state.myName || 'Jugador',
@@ -1436,7 +1449,7 @@ export function reiniciarTodo() {
         };
     }
     
-    // 4. Resetear variables de estado
+    // 5. Resetear variables de estado
     state.myTotalScore = 0;
     state.cartasRepartidas = false;
     state.progresoCarta = {};
@@ -1454,22 +1467,22 @@ export function reiniciarTodo() {
     state.coloresMeta = [];
     state.resultadosFinales = {};
     
-    // 5. Resetear tickets
+    // 6. Resetear tickets
     COLORES.forEach(color => {
         state.tickets[color] = null;
     });
     state.bonusTicket = null;
     state.bonusReclamado = false;
     
-    // 6. Resetear puntos especiales
+    // 7. Resetear puntos especiales
     if (state.playersData[state.myId]) {
         state.playersData[state.myId].puntosEspeciales = [];
     }
     
-    // 7. Cerrar modal de podio si está abierto
+    // 8. Cerrar modal de podio si está abierto
     cerrarPodio();
     
-    // 8. Renderizar todo
+    // 9. Renderizar todo
     renderBoard();
     renderCartasVisibles();
     renderCartasJugador();
@@ -1479,7 +1492,7 @@ export function reiniciarTodo() {
     renderLeaderboard();
     actualizarBotonEspecial();
     
-    // 9. Broadcast si está en sala
+    // 10. Broadcast si está en sala
     if (state.currentRoom) {
         broadcastMazo();
         broadcastTablero();
@@ -1501,6 +1514,8 @@ export function reiniciarTablero() {
 
 export function limpiarMano() {
     state.cartasJugador = Array(5).fill(null);
+    // LIMPIAR PILA DE MOVIMIENTOS AL LIMPIAR LA MANO
+    limpiarPilaMovimientos();
     renderCartasJugador();
     if (state.currentRoom) {
         broadcastScore('sync');

@@ -248,5 +248,18 @@ export function updateVisuals() {
     }
 }
 
+// ============================================
+// FUNCIÓN PARA FORZAR ACTUALIZACIÓN COMPLETA DE UI
+// (Útil después de deshacer)
+// ============================================
+
+export function refreshUI() {
+    renderBoard();
+    renderCartasVisibles();
+    renderCartasJugador();
+    updateVisuals();
+}
+
 // EXPONER FUNCIONES PARA WINDOW
 window.usarHabilidadPorColor = usarHabilidadPorColor;
+window.refreshUI = refreshUI;
