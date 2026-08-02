@@ -132,7 +132,7 @@ export function cerrarCompletas() {
 }
 
 // ============================================
-// VER HISTORIAL DE UN COLOR
+// VER HISTORIAL DE UN COLOR (LOCAL)
 // ============================================
 
 export function verHistorial(color) {
@@ -212,6 +212,84 @@ export function verHistorial(color) {
 }
 
 // ============================================
+// VER HISTORIAL DE OTRO JUGADOR
+// ============================================
+
+export function verHistorialDeJugador(jugadorId, color) {
+    const player = state.playersData[jugadorId];
+    if (!player) return;
+
+    const cartasTerminadas = player.cartasTerminadas || [];
+    const cartasColor = cartasTerminadas.filter(c => c.color === color);
+
+    if (cartasColor.length === 0) {
+        mostrarMensaje(`No hay cartas completadas de ${color} para ${player.name}`, 'warning');
+        return;
+    }
+
+    // Guardar estado del historial para restaurar después del zoom
+    window._historialState = {
+        activo: true,
+        color: color,
+        jugadorId: jugadorId,
+        modo: 'remoto'
+    };
+
+    const colorHex = {
+        celeste: '#4fc3f7',
+        lima: '#aed581',
+        naranja: '#ffb74d',
+        purpura: '#ce93d8',
+        rosa: '#f06292'
+    }[color] || '#888';
+
+    const modal = document.getElementById('historialModal');
+    const content = document.getElementById('historialContent');
+    if (!modal || !content) return;
+
+    let html = `
+        <div style="text-align: center; margin-bottom: 12px;">
+            <span style="font-size: 1.5rem; color: ${colorHex};">•</span>
+            <h3 style="color: #fff; display: inline; margin-left: 8px; font-size: 1.1rem;">${player.name} - ${color.charAt(0).toUpperCase() + color.slice(1)}</h3>
+            <div style="font-size: 0.65rem; color: #666; margin-top: 2px;">Haz clic en una carta para ampliarla</div>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-height: 300px; overflow-y: auto; padding: 4px;">
+    `;
+
+    cartasColor.sort((a, b) => a.numero - b.numero);
+
+    cartasColor.forEach(carta => {
+        const usada = player.habilidadesUsadas?.[carta.id] || false;
+        html += `
+            <div onclick="window.abrirZoomTerminadaDesdeCompletas('${carta.id}')" 
+                 style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px; cursor: pointer; transition: all 0.2s; text-align: center; width: 70px;"
+                 onmouseover="this.style.background='rgba(255,255,255,0.15)'" 
+                 onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                <img src="${carta.imagen}" alt="Carta ${carta.numero}" 
+                     style="width: 60px; height: 80px; object-fit: contain; border-radius: 4px; display: block; margin: 0 auto;"
+                     onerror="this.style.display='none'; this.parentElement.innerHTML += '<div style=\\'font-size:0.7rem;color:#888;\\'>N°${carta.numero}</div>'">
+                <div style="font-size: 0.5rem; color: ${usada ? '#666' : '#4caf50'}; margin-top: 2px;">
+                    ${usada ? 'Usada' : 'Disponible'}
+                </div>
+            </div>
+        `;
+    });
+
+    html += `
+        </div>
+        <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; margin-top: 10px;">
+            <button onclick="window.cerrarHistorial()" 
+                    style="background: #555; color: white; border: none; padding: 6px 25px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer;">
+                Cerrar
+            </button>
+        </div>
+    `;
+
+    content.innerHTML = html;
+    modal.style.display = 'flex';
+}
+
+// ============================================
 // CERRAR HISTORIAL
 // ============================================
 
@@ -253,17 +331,41 @@ export function activarHabilidadDesdeCompletas(color) {
 }
 
 // ============================================
-// ABRIR ZOOM DESDE HISTORIAL
+// ABRIR ZOOM DESDE HISTORIAL (CORREGIDO)
 // ============================================
 
 export function abrirZoomTerminadaDesdeCompletas(cartaId) {
-    const jugadorId = state.myId;
-    const player = state.playersData[jugadorId];
-    if (!player) return;
-
-    const carta = player.cartasTerminadas?.find(c => c.id === cartaId);
+    // Primero verificar si hay un estado de historial activo
+    const estadoHistorial = window._historialState || { activo: false, jugadorId: null };
+    
+    let carta = null;
+    let jugadorId = estadoHistorial.jugadorId || state.myId;
+    let player = null;
+    
+    // Buscar la carta en el jugador correspondiente
+    if (jugadorId && state.playersData[jugadorId]) {
+        player = state.playersData[jugadorId];
+        if (player && player.cartasTerminadas) {
+            carta = player.cartasTerminadas.find(c => c.id === cartaId);
+        }
+    }
+    
+    // Si no se encontró en el jugador del historial, buscar en el jugador local
+    if (!carta) {
+        const playerLocal = state.playersData[state.myId];
+        if (playerLocal && playerLocal.cartasTerminadas) {
+            carta = playerLocal.cartasTerminadas.find(c => c.id === cartaId);
+        }
+    }
+    
+    // Si aún no se encontró, buscar en state.cartasTerminadas (fallback)
+    if (!carta) {
+        carta = state.cartasTerminadas?.find(c => c.id === cartaId);
+    }
+    
     if (!carta) {
         mostrarMensaje('Carta no encontrada', 'error');
+        console.warn(`Carta ${cartaId} no encontrada en ningún jugador`);
         return;
     }
 
@@ -333,84 +435,6 @@ export function abrirCompletasDeJugador(jugadorId, color) {
         <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; margin-top: 12px;">
             <button onclick="window.cerrarCompletas()" 
                     style="background: #555; color: white; border: none; padding: 8px 30px; border-radius: 6px; font-size: 0.9rem; font-weight: bold; cursor: pointer;">
-                Cerrar
-            </button>
-        </div>
-    `;
-
-    content.innerHTML = html;
-    modal.style.display = 'flex';
-}
-
-// ============================================
-// VER HISTORIAL DE OTRO JUGADOR
-// ============================================
-
-export function verHistorialDeJugador(jugadorId, color) {
-    const player = state.playersData[jugadorId];
-    if (!player) return;
-
-    const cartasTerminadas = player.cartasTerminadas || [];
-    const cartasColor = cartasTerminadas.filter(c => c.color === color);
-
-    if (cartasColor.length === 0) {
-        mostrarMensaje(`No hay cartas completadas de ${color} para ${player.name}`, 'warning');
-        return;
-    }
-
-    // Guardar estado del historial para restaurar después del zoom
-    window._historialState = {
-        activo: true,
-        color: color,
-        jugadorId: jugadorId,
-        modo: 'remoto'
-    };
-
-    const colorHex = {
-        celeste: '#4fc3f7',
-        lima: '#aed581',
-        naranja: '#ffb74d',
-        purpura: '#ce93d8',
-        rosa: '#f06292'
-    }[color] || '#888';
-
-    const modal = document.getElementById('historialModal');
-    const content = document.getElementById('historialContent');
-    if (!modal || !content) return;
-
-    let html = `
-        <div style="text-align: center; margin-bottom: 12px;">
-            <span style="font-size: 1.5rem; color: ${colorHex};">•</span>
-            <h3 style="color: #fff; display: inline; margin-left: 8px; font-size: 1.1rem;">${player.name} - ${color.charAt(0).toUpperCase() + color.slice(1)}</h3>
-            <div style="font-size: 0.65rem; color: #666; margin-top: 2px;">Haz clic en una carta para ampliarla</div>
-        </div>
-        <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-height: 300px; overflow-y: auto; padding: 4px;">
-    `;
-
-    cartasColor.sort((a, b) => a.numero - b.numero);
-
-    cartasColor.forEach(carta => {
-        const usada = player.habilidadesUsadas?.[carta.id] || false;
-        html += `
-            <div onclick="window.abrirZoomTerminadaDesdeCompletas('${carta.id}')" 
-                 style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px; cursor: pointer; transition: all 0.2s; text-align: center; width: 70px;"
-                 onmouseover="this.style.background='rgba(255,255,255,0.15)'" 
-                 onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                <img src="${carta.imagen}" alt="Carta ${carta.numero}" 
-                     style="width: 60px; height: 80px; object-fit: contain; border-radius: 4px; display: block; margin: 0 auto;"
-                     onerror="this.style.display='none'; this.parentElement.innerHTML += '<div style=\\'font-size:0.7rem;color:#888;\\'>N°${carta.numero}</div>'">
-                <div style="font-size: 0.5rem; color: ${usada ? '#666' : '#4caf50'}; margin-top: 2px;">
-                    ${usada ? 'Usada' : 'Disponible'}
-                </div>
-            </div>
-        `;
-    });
-
-    html += `
-        </div>
-        <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; margin-top: 10px;">
-            <button onclick="window.cerrarHistorial()" 
-                    style="background: #555; color: white; border: none; padding: 6px 25px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer;">
                 Cerrar
             </button>
         </div>
