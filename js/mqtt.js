@@ -20,6 +20,81 @@ export function setRenderStatusPanel(fn) {
 }
 
 // ============================================
+// FUNCIÓN PARA RESTAURAR ESTADO LOCAL DESDE PLAYERSDATA
+// ============================================
+
+export function forzarRestauracionLocal() {
+    const myData = state.playersData[state.myId];
+    if (!myData) {
+        mostrarMensaje('⚠️ No hay datos del jugador', 'warning');
+        return false;
+    }
+    
+    // Verificar si hay datos válidos para restaurar
+    const tieneCartas = myData.cartasJugador && myData.cartasJugador.some(c => c !== null);
+    const tieneTerminadas = myData.cartasTerminadas && myData.cartasTerminadas.length > 0;
+    const tieneProgreso = myData.progresoCartas && Object.keys(myData.progresoCartas).length > 0;
+    
+    if (!tieneCartas && !tieneTerminadas && !tieneProgreso) {
+        mostrarMensaje('ℹ️ No hay datos que restaurar', 'info');
+        return false;
+    }
+    
+    // Restaurar cartas del jugador
+    if (myData.cartasJugador) {
+        state.cartasJugador = myData.cartasJugador.map(c => c ? { ...c } : null);
+    }
+    
+    if (myData.cartasTerminadas) {
+        state.cartasTerminadas = myData.cartasTerminadas.map(c => ({ ...c }));
+    }
+    
+    if (myData.habilidadesUsadas) {
+        state.habilidadesUsadas = { ...myData.habilidadesUsadas };
+    }
+    
+    if (myData.progresoCartas) {
+        state.progresoCarta = { ...myData.progresoCartas };
+    }
+    
+    if (myData.score !== undefined) {
+        state.myTotalScore = myData.score;
+    }
+    
+    if (myData.cartasEspecialesUsadas !== undefined) {
+        state.cartasEspecialesUsadas = myData.cartasEspecialesUsadas;
+    }
+    
+    if (myData.coloresMeta) {
+        state.coloresMeta = [...myData.coloresMeta];
+    }
+    
+    if (myData.tablero) {
+        state.tableroGlobal = { ...myData.tablero };
+    }
+    
+    if (myData.fichas) {
+        state.fichas = { ...myData.fichas };
+    }
+    
+    if (myData.puntosEspeciales) {
+        state.playersData[state.myId].puntosEspeciales = [...(myData.puntosEspeciales || [])];
+    }
+    
+    // Actualizar UI
+    renderCartasVisibles();
+    renderCartasJugador();
+    renderBoard();
+    updateVisuals();
+    calculateScores();
+    renderStatusPanel();
+    renderLeaderboard();
+    actualizarBotonEspecial();
+    
+    return true;
+}
+
+// ============================================
 // CONECTAR A SALA
 // ============================================
 
@@ -33,13 +108,35 @@ export function connectToRoom(code) {
         const topic = `paradice_xyz/room/${code}`;
         state.mqttClient.subscribe(topic);
         
-        generarMazos();
+        // Primero intentar restaurar desde playersData (si existe)
+        const restaurado = forzarRestauracionLocal();
+        
+        if (!restaurado) {
+            // Si no hay datos, generar estado fresco
+            generarMazos();
+            state.cartasJugador = Array(5).fill(null);
+            state.cartasTerminadas = [];
+            state.habilidadesUsadas = {};
+            state.progresoCarta = {};
+            state.cartasEspecialesUsadas = 0;
+            state.myTotalScore = 0;
+            state.coloresMeta = [];
+            state.resultadosFinales = {};
+            state.juegoTerminado = false;
+            
+            // Resetear puntosEspeciales
+            if (state.playersData[state.myId]) {
+                state.playersData[state.myId].puntosEspeciales = [];
+            }
+        }
+        
         renderBoard();
         updateVisuals();
         calculateScores();
         renderStatusPanel();
         actualizarBotonEspecial();
         
+        // Asegurar que playersData tenga los datos actuales
         state.playersData[state.myId] = {
             name: state.myName,
             score: state.myTotalScore,
@@ -54,18 +151,77 @@ export function connectToRoom(code) {
             fichas: state.fichas,
             progresoCartas: state.progresoCarta,
             cartasEspecialesUsadas: state.cartasEspecialesUsadas || 0,
-            puntosEspeciales: []
+            puntosEspeciales: state.playersData[state.myId]?.puntosEspeciales || [],
+            coloresMeta: state.coloresMeta || []
         };
         
         joinSuccess(code);
-        broadcastScore('join');
+        
+        // Si se restauraron datos, enviar broadcast para sincronizar
+        if (restaurado) {
+            setTimeout(() => {
+                broadcastScore('sync');
+                broadcastTablero();
+                broadcastMazo();
+                broadcastTickets();
+                mostrarMensaje('🔄 Datos restaurados y sincronizados', 'success');
+            }, 500);
+        } else {
+            broadcastScore('join');
+        }
     });
 
     state.mqttClient.on('message', (topic, message) => {
         try {
             const data = JSON.parse(message.toString());
-            if (data.id === state.myId) return;
-
+            
+            // ============================================
+            // MENSAJE DE OTRO JUGADOR - ACTUALIZAR playersData
+            // ============================================
+            if (data.id !== state.myId) {
+                // Actualizar datos del otro jugador
+                state.playersData[data.id] = {
+                    name: data.name || 'Jugador',
+                    score: data.score || 0,
+                    cartasJugador: data.cartasJugador || [],
+                    cartasTerminadas: data.cartasTerminadas || [],
+                    habilidadesUsadas: data.habilidadesUsadas || {},
+                    mazoColores: data.mazoColores || [],
+                    mazoEspecialDisponible: data.mazoEspecialDisponible || [],
+                    cartasVisibles: data.cartasVisibles || [],
+                    cartasRepartidas: data.cartasRepartidas || false,
+                    tablero: data.tablero || state.tableroGlobal,
+                    fichas: data.fichas || state.fichas,
+                    progresoCartas: data.progresoCartas || {},
+                    cartasEspecialesUsadas: data.cartasEspecialesUsadas || 0,
+                    puntosEspeciales: data.puntosEspeciales || [],
+                    coloresMeta: data.coloresMeta || []
+                };
+                
+                // Si el otro jugador tiene coloresMeta, actualizar los nuestros
+                if (data.coloresMeta && data.coloresMeta.length > 0) {
+                    state.coloresMeta = data.coloresMeta;
+                }
+                
+                renderLeaderboard();
+                renderStatusPanel();
+                
+                // Si es un mensaje de tipo 'sync', también actualizar tablero
+                if (data.action === 'sync' && data.tablero) {
+                    state.tableroGlobal = data.tablero;
+                    state.fichas = data.fichas || state.fichas;
+                    if (data.coloresMeta) {
+                        state.coloresMeta = data.coloresMeta;
+                    }
+                    renderBoard();
+                    updateVisuals();
+                }
+            }
+            
+            // ============================================
+            // PROCESAR ACCIONES ESPECÍFICAS
+            // ============================================
+            
             // TICKETS
             if (data.action === 'tickets') {
                 state.tickets = data.tickets || {};
@@ -78,6 +234,9 @@ export function connectToRoom(code) {
 
             // MAZO
             if (data.action === 'mazo') {
+                // Si es mi propio mensaje, ya tengo los datos
+                if (data.id === state.myId) return;
+                
                 state.mazoColores = data.mazoColores || state.mazoColores;
                 state.cartasVisibles = data.cartasVisibles || state.cartasVisibles;
                 renderCartasVisibles();
@@ -86,8 +245,10 @@ export function connectToRoom(code) {
             }
 
             // TABLERO
-            if (data.action === 'tablero' && data.tablero) {
-                state.tableroGlobal = data.tablero;
+            if (data.action === 'tablero') {
+                if (data.id === state.myId) return;
+                
+                state.tableroGlobal = data.tablero || state.tableroGlobal;
                 if (data.fichas) {
                     state.fichas = data.fichas;
                 }
@@ -96,7 +257,6 @@ export function connectToRoom(code) {
                 }
                 updateVisuals();
                 calculateScores();
-                renderCartasJugador();
                 renderBoard();
                 renderLeaderboard();
                 renderStatusPanel();
@@ -109,7 +269,6 @@ export function connectToRoom(code) {
                 state.coloresMeta = data.coloresMeta || [];
                 state.resultadosFinales = data.resultadosFinales || {};
                 
-                // Actualizar playersData con los scores recibidos
                 if (data.playersData) {
                     Object.keys(data.playersData).forEach(id => {
                         if (state.playersData[id]) {
@@ -118,7 +277,6 @@ export function connectToRoom(code) {
                     });
                 }
                 
-                // Mostrar podio remoto con TOP 3
                 mostrarPodioRemoto();
                 renderLeaderboard();
                 renderStatusPanel();
@@ -126,36 +284,21 @@ export function connectToRoom(code) {
                 return;
             }
 
-            // JUGADOR
-            state.playersData[data.id] = {
-                name: data.name,
-                score: data.score || 0,
-                cartasJugador: data.cartasJugador || [],
-                cartasTerminadas: data.cartasTerminadas || [],
-                habilidadesUsadas: data.habilidadesUsadas || {},
-                mazoColores: data.mazoColores || [],
-                mazoEspecialDisponible: data.mazoEspecialDisponible || [],
-                cartasVisibles: data.cartasVisibles || [],
-                cartasRepartidas: data.cartasRepartidas || false,
-                tablero: data.tablero || state.tableroGlobal,
-                fichas: data.fichas || state.fichas,
-                progresoCartas: data.progresoCartas || {},
-                cartasEspecialesUsadas: data.cartasEspecialesUsadas || 0,
-                puntosEspeciales: data.puntosEspeciales || []
-            };
-            renderLeaderboard();
-            renderStatusPanel();
-
-            if (data.action === 'join') {
+            // JOIN - Cuando un jugador se une, pedir su estado completo
+            if (data.action === 'join' && data.id !== state.myId) {
+                // Ya se actualizó el jugador arriba
+                // Enviar nuestro estado completo para sincronizar
                 setTimeout(() => {
                     broadcastTablero();
                     broadcastMazo();
                     broadcastTickets();
+                    broadcastScore('sync');
                 }, 500);
-                broadcastScore('sync');
+                return;
             }
             
-            if (data.action === 'repartir') {
+            // REPARTIR
+            if (data.action === 'repartir' && data.id !== state.myId) {
                 state.cartasVisibles = data.cartasVisibles || state.cartasVisibles;
                 state.mazoColores = data.mazoColores || state.mazoColores;
                 state.cartasRepartidas = data.cartasRepartidas || false;
@@ -165,7 +308,24 @@ export function connectToRoom(code) {
                 renderBoard();
                 renderStatusPanel();
                 actualizarBotonEspecial();
+                return;
             }
+            
+            // SYNC - Sincronización completa de un jugador
+            if (data.action === 'sync' && data.id !== state.myId) {
+                // Los datos ya se actualizaron arriba
+                // Actualizar UI completa
+                renderCartasVisibles();
+                renderCartasJugador();
+                renderBoard();
+                updateVisuals();
+                calculateScores();
+                renderLeaderboard();
+                renderStatusPanel();
+                actualizarBotonEspecial();
+                return;
+            }
+            
         } catch(e) {
             console.error('Mensaje invalido', e);
         }
@@ -451,3 +611,9 @@ export function joinRoom() {
     }
     connectToRoom(code);
 }
+
+// ============================================
+// EXPONER FUNCIONES GLOBALES
+// ============================================
+
+window.forzarRestauracionLocal = forzarRestauracionLocal;

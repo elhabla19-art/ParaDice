@@ -23,7 +23,8 @@ import {
 import { 
     playSolo, showJoinModal, backToLobby, 
     createRoom, joinRoom,
-    setRenderStatusPanel
+    setRenderStatusPanel,
+    forzarRestauracionLocal
 } from './mqtt.js';
 import { toggleLeaderboard, abrirZoomLeaderboardDesdeCard, renderLeaderboard, refrescarSincronizacion } from './leaderboard.js';
 import { renderStatusPanel } from './panel.js';
@@ -90,6 +91,7 @@ function init() {
     window.renderStatusPanel = renderStatusPanel;
     window.cerrarPodio = cerrarPodio;
     window.refrescarSincronizacion = refrescarSincronizacion;
+    window.forzarRestauracionLocal = forzarRestauracionLocal;
     
     // Funciones de completas
     window.abrirCompletas = abrirCompletas;
@@ -124,6 +126,7 @@ function init() {
     console.log('Haz clic en el panel de estado para ver tus cartas completadas');
     console.log('🔄 Sistema de deshacer: haz clic en la última casilla marcada para desmarcarla');
     console.log('📊 Para debug: window._debugDeshacer');
+    console.log('🔄 Para restaurar estado: window.forzarRestauracionLocal()');
 }
 
 // ============================================
@@ -210,6 +213,7 @@ export {
     renderStatusPanel,
     cerrarPodio,
     refrescarSincronizacion,
+    forzarRestauracionLocal,
     abrirCompletas,
     cerrarCompletas,
     verHistorial,

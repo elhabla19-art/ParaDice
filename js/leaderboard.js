@@ -5,7 +5,7 @@
 import { COLORES, state, TICKETS, PUNTAJES } from './config-state.js';
 import { abrirZoomLeaderboard } from './zoom.js';
 import { getCartasCompletadasPorColor } from './juego.js';
-import { broadcastScore, broadcastTablero, broadcastTickets, broadcastMazo } from './mqtt.js';
+import { broadcastScore, broadcastTablero, broadcastTickets, broadcastMazo, forzarRestauracionLocal } from './mqtt.js';
 import { calculateScores } from './juego.js';
 import { renderBoard, updateVisuals, renderCartasVisibles, renderCartasJugador } from './mazos-tablero.js';
 import { renderStatusPanel } from './panel.js';
@@ -257,26 +257,69 @@ export function abrirZoomLeaderboardDesdeCard(playerId, cartaIndex) {
 }
 
 // ============================================
-// REFRESCAR SINCRONIZACION
+// REFRESCAR SINCRONIZACION (MEJORADO)
 // ============================================
 
 export function refrescarSincronizacion() {
-    // Si está en sala, enviar broadcast
+    // Mostrar feedback visual
+    const btn = document.getElementById('btnRefrescar');
+    if (btn) btn.classList.add('refrescando');
+    
+    // Si está en sala
     if (state.currentRoom) {
-        // Mostrar feedback visual
-        const btn = document.getElementById('btnRefrescar');
-        if (btn) btn.classList.add('refrescando');
+        // PRIMERO: Intentar restaurar estado local desde playersData
+        const restaurado = forzarRestauracionLocal();
         
-        // Forzar sincronización completa
-        broadcastScore('sync');
-        broadcastTablero();
-        broadcastTickets();
-        broadcastMazo();
-        
-        // Recalcular puntajes locales
+        if (restaurado) {
+            // Si se restauraron datos, enviar broadcast para sincronizar
+            setTimeout(() => {
+                broadcastScore('sync');
+                broadcastTablero();
+                broadcastTickets();
+                broadcastMazo();
+                
+                // Refrescar toda la UI
+                renderBoard();
+                updateVisuals();
+                renderCartasVisibles();
+                renderCartasJugador();
+                renderStatusPanel();
+                renderLeaderboard();
+                calculateScores();
+                
+                setTimeout(() => {
+                    if (btn) btn.classList.remove('refrescando');
+                }, 600);
+                
+                mostrarMensaje('🔄 Estado restaurado y sincronizado', 'success');
+            }, 300);
+        } else {
+            // Si no hay datos para restaurar, hacer sincronización normal
+            broadcastScore('sync');
+            broadcastTablero();
+            broadcastTickets();
+            broadcastMazo();
+            
+            // Recalcular puntajes locales
+            calculateScores();
+            
+            // Refrescar toda la UI
+            renderBoard();
+            updateVisuals();
+            renderCartasVisibles();
+            renderCartasJugador();
+            renderStatusPanel();
+            renderLeaderboard();
+            
+            setTimeout(() => {
+                if (btn) btn.classList.remove('refrescando');
+            }, 600);
+            
+            mostrarMensaje('Sincronización completada', 'info');
+        }
+    } else {
+        // Modo solo: solo refrescar UI local
         calculateScores();
-        
-        // Refrescar toda la UI
         renderBoard();
         updateVisuals();
         renderCartasVisibles();
@@ -288,19 +331,10 @@ export function refrescarSincronizacion() {
             if (btn) btn.classList.remove('refrescando');
         }, 600);
         
-        mostrarMensaje('Sincronizacion forzada completada', 'info');
-    } else {
-        // Modo solo: solo refrescar UI local
-        calculateScores();
-        renderBoard();
-        updateVisuals();
-        renderCartasVisibles();
-        renderCartasJugador();
-        renderStatusPanel();
-        renderLeaderboard();
         mostrarMensaje('Vista actualizada', 'info');
     }
 }
 
 // EXPONER FUNCIONES GLOBALES
 window.abrirCompletasDeJugador = abrirCompletasDeJugador;
+window.refrescarSincronizacion = refrescarSincronizacion;
