@@ -23,7 +23,7 @@ function crearCasillas(container, progresoData, carta) {
     const completada = progresoData?.completada || false;
     const key = `${carta.color}-${carta.numero}`;
     
-    // Ajustar container para que las casillas estén a la derecha
+    // Ajustar container
     container.style.display = 'flex';
     container.style.flexDirection = 'column';
     container.style.gap = '4px';
@@ -48,7 +48,6 @@ function crearCasillas(container, progresoData, carta) {
             transition: all 0.2s;
         `;
         
-        // Si la carta está completada, no permitir interacción
         if (completada) {
             div.onclick = null;
             div.style.cursor = 'default';
@@ -57,40 +56,28 @@ function crearCasillas(container, progresoData, carta) {
             continue;
         }
         
-        // Manejar clic en casilla
         div.onclick = () => {
-            // Si el juego terminó, no permitir acciones
             if (state.juegoTerminado) {
                 mostrarMensaje('El juego ya terminó. Reinicia para jugar de nuevo.', 'warning');
                 return;
             }
             
-            // Casilla está marcada → intentar deshacer
             if (estaMarcada) {
-                // Verificar si es el último movimiento
                 if (esUltimoMovimiento(key, i)) {
-                    // Deshacer: desmarcar y eliminar de la pila
                     const deshecho = intentarDeshacer(key, i);
                     if (deshecho) {
                         desmarcarCasilla(key, i);
-                        
-                        // Actualizar UI
                         actualizarZoomJugador(carta);
                         renderCartasJugador();
                         renderBoard();
                         renderStatusPanel();
                         renderLeaderboard();
-                        
                         mostrarMensaje(`↩️ Deshecho: ${carta.color} N°${carta.numero} - Casilla ${i}`, 'info');
                     }
                 } else {
-                    // No es el último movimiento
                     const ultimo = peekMovimiento();
                     if (ultimo) {
-                        const ultimoColor = ultimo.color || 'desconocido';
-                        const ultimoNumero = ultimo.numero || '?';
-                        const ultimoCasilla = ultimo.casilla || '?';
-                        mostrarMensaje(`Solo puedes deshacer el último movimiento (${ultimoColor} N°${ultimoNumero} - Casilla ${ultimoCasilla})`, 'warning');
+                        mostrarMensaje(`Solo puedes deshacer el último movimiento (${ultimo.color} N°${ultimo.numero} - Casilla ${ultimo.casilla})`, 'warning');
                     } else {
                         mostrarMensaje('No hay movimientos para deshacer', 'warning');
                     }
@@ -98,18 +85,14 @@ function crearCasillas(container, progresoData, carta) {
                 return;
             }
             
-            // Casilla NO está marcada → marcar normalmente
-            // Verificar si la carta ya está completada (por si acaso)
             if (progresoData.completada) {
                 mostrarMensaje('Esta carta ya está completada', 'warning');
                 return;
             }
             
-            // Llamar a completarCarta que maneja todo el flujo
             completarCarta(carta, i);
         };
         
-        // Hover effects
         if (!estaMarcada && !completada) {
             div.onmouseenter = () => { 
                 div.style.background = 'rgba(255,255,255,0.2)'; 
@@ -122,7 +105,6 @@ function crearCasillas(container, progresoData, carta) {
                 div.style.transform = 'scale(1)'; 
             };
         } else if (estaMarcada && !completada) {
-            // Para casillas marcadas, hover con color diferente (indicando que se puede deshacer)
             div.onmouseenter = () => { 
                 div.style.background = 'rgba(255,100,100,0.2)'; 
                 div.style.borderColor = '#ff6b6b'; 
@@ -136,26 +118,6 @@ function crearCasillas(container, progresoData, carta) {
         }
         
         container.appendChild(div);
-    }
-    
-    // Mostrar información del último movimiento si existe
-    const ultimo = peekMovimiento();
-    if (ultimo && !completada) {
-        const infoDiv = document.createElement('div');
-        infoDiv.style.cssText = `
-            font-size: 0.55rem;
-            color: #888;
-            margin-top: 4px;
-            text-align: center;
-            border-top: 1px solid rgba(255,255,255,0.05);
-            padding-top: 4px;
-            width: 100%;
-        `;
-        const esDeEstaCarta = ultimo.key === key;
-        infoDiv.textContent = esDeEstaCarta 
-            ? `↩️ Último: casilla ${ultimo.casilla} (clic para deshacer)` 
-            : `Último movimiento: ${ultimo.color} N°${ultimo.numero} - Casilla ${ultimo.casilla}`;
-        container.appendChild(infoDiv);
     }
 }
 
