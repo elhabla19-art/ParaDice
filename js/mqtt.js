@@ -1,5 +1,5 @@
 // ============================================
-// COMUNICACIÓN MQTT
+// COMUNICACIÓN MQTT (CON MODO AUTOMATICO)
 // ============================================
 
 import { state, COLORES } from './config-state.js';
@@ -8,6 +8,11 @@ import { generarMazos, renderBoard, updateVisuals, renderCartasVisibles, renderC
 import { calculateScores, actualizarBotonEspecial, finalizarJuego } from './juego.js';
 import { renderLeaderboard } from './leaderboard.js';
 import { renderStatusPanel } from './panel.js';
+
+// ===== DETECTAR MODO AUTOMATICO =====
+const urlParams = new URLSearchParams(window.location.search);
+const isAutoMode = urlParams.get('auto') === '1';
+const AUTO_ROOM_CODE = 'GRIL';
 
 // ============================================
 // FUNCIONES DE RENDER - IMPORTADAS DINÁMICAMENTE
@@ -234,7 +239,6 @@ export function connectToRoom(code) {
 
             // MAZO
             if (data.action === 'mazo') {
-                // Si es mi propio mensaje, ya tengo los datos
                 if (data.id === state.myId) return;
                 
                 state.mazoColores = data.mazoColores || state.mazoColores;
@@ -286,8 +290,6 @@ export function connectToRoom(code) {
 
             // JOIN - Cuando un jugador se une, pedir su estado completo
             if (data.action === 'join' && data.id !== state.myId) {
-                // Ya se actualizó el jugador arriba
-                // Enviar nuestro estado completo para sincronizar
                 setTimeout(() => {
                     broadcastTablero();
                     broadcastMazo();
@@ -313,8 +315,6 @@ export function connectToRoom(code) {
             
             // SYNC - Sincronización completa de un jugador
             if (data.action === 'sync' && data.id !== state.myId) {
-                // Los datos ya se actualizaron arriba
-                // Actualizar UI completa
                 renderCartasVisibles();
                 renderCartasJugador();
                 renderBoard();
@@ -346,7 +346,6 @@ function mostrarPodioRemoto() {
     const content = document.getElementById('podioContent');
     if (!modal || !content) return;
     
-    // Obtener todos los jugadores y ordenar por score (mayor a menor)
     const jugadores = Object.keys(state.playersData).map(id => ({
         id: id,
         nombre: state.playersData[id].name || 'Jugador',
@@ -355,10 +354,7 @@ function mostrarPodioRemoto() {
     }));
     
     jugadores.sort((a, b) => b.score - a.score);
-    
-    // Tomar TOP 3
     const top3 = jugadores.slice(0, 3);
-    
     const medallas = ['🥇', '🥈', '🥉'];
     
     let html = `
@@ -380,7 +376,6 @@ function mostrarPodioRemoto() {
         `;
     });
     
-    // Si hay más de 3 jugadores, mostrar posición del jugador local si no está en TOP 3
     const localEnTop3 = top3.some(j => j.esLocal);
     if (!localEnTop3 && jugadores.length > 3) {
         const posLocal = jugadores.findIndex(j => j.esLocal) + 1;
@@ -501,7 +496,6 @@ export function broadcastJuegoTerminado() {
     if (state.mqttClient && state.currentRoom) {
         const topic = `paradice_xyz/room/${state.currentRoom}`;
         
-        // Crear copia de playersData solo con los scores
         const playersScores = {};
         Object.keys(state.playersData).forEach(id => {
             playersScores[id] = {
@@ -544,7 +538,7 @@ function joinSuccess(code) {
 }
 
 // ============================================
-// FUNCIONES DE LOBBY
+// FUNCIONES DE LOBBY - MODIFICADAS CON MODO AUTOMATICO
 // ============================================
 
 export function playSolo() {
@@ -589,11 +583,42 @@ export function playSolo() {
 export function showJoinModal() {
     document.getElementById('lobbyModal').style.display = 'none';
     document.getElementById('joinModal').style.display = 'flex';
+    
+    const roomInput = document.getElementById('roomCodeInput');
+    if (roomInput) {
+        roomInput.value = '';
+        roomInput.placeholder = 'ABCD';
+        roomInput.readOnly = false;
+        roomInput.style.opacity = '1';
+        roomInput.style.color = 'white';
+        roomInput.focus();
+    }
+    
+    // Si estamos en modo automatico, precargar el codigo
+    if (isAutoMode) {
+        const roomInput = document.getElementById('roomCodeInput');
+        if (roomInput) {
+            roomInput.value = AUTO_ROOM_CODE;
+            roomInput.readOnly = true;
+            roomInput.style.opacity = '0.7';
+            roomInput.style.color = '#4CAF50';
+        }
+    }
 }
 
 export function backToLobby() {
     document.getElementById('joinModal').style.display = 'none';
     document.getElementById('lobbyModal').style.display = 'flex';
+    
+    // Limpiar el campo al volver
+    const roomInput = document.getElementById('roomCodeInput');
+    if (roomInput) {
+        roomInput.value = '';
+        roomInput.placeholder = 'ABCD';
+        roomInput.readOnly = false;
+        roomInput.style.opacity = '1';
+        roomInput.style.color = 'white';
+    }
 }
 
 export function createRoom() {
@@ -604,11 +629,21 @@ export function createRoom() {
 
 export function joinRoom() {
     state.myName = getPlayerName();
-    const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
-    if (code.length !== 4) {
-        mostrarMensaje('El codigo debe tener 4 letras/numeros.', 'error');
-        return;
+    let code;
+    
+    if (isAutoMode) {
+        code = AUTO_ROOM_CODE;
+    } else {
+        code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+        if (code.length !== 4) {
+            mostrarMensaje('El codigo debe tener 4 letras/numeros.', 'error');
+            return;
+        }
     }
+    
+    // Limpiar después de usar
+    document.getElementById('roomCodeInput').value = '';
+    
     connectToRoom(code);
 }
 
@@ -617,3 +652,5 @@ export function joinRoom() {
 // ============================================
 
 window.forzarRestauracionLocal = forzarRestauracionLocal;
+window.isAutoMode = isAutoMode;
+window.AUTO_ROOM_CODE = AUTO_ROOM_CODE;

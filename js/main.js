@@ -1,5 +1,5 @@
 // ============================================
-// MAIN - PUNTO DE ENTRADA
+// MAIN - PUNTO DE ENTRADA (CON MODO AUTOMATICO)
 // ============================================
 
 import { state, initState } from './config-state.js';
@@ -42,6 +42,11 @@ import {
     getTodosLosMovimientos,
     contarMovimientos
 } from './deshacer.js';
+
+// ===== DETECTAR MODO AUTOMATICO =====
+const urlParams = new URLSearchParams(window.location.search);
+const isAutoMode = urlParams.get('auto') === '1';
+const AUTO_ROOM_CODE = 'GRIL';
 
 // ============================================
 // INICIALIZACIÓN
@@ -92,6 +97,8 @@ function init() {
     window.cerrarPodio = cerrarPodio;
     window.refrescarSincronizacion = refrescarSincronizacion;
     window.forzarRestauracionLocal = forzarRestauracionLocal;
+    window.isAutoMode = isAutoMode;
+    window.AUTO_ROOM_CODE = AUTO_ROOM_CODE;
     
     // Funciones de completas
     window.abrirCompletas = abrirCompletas;
@@ -127,6 +134,7 @@ function init() {
     console.log('🔄 Sistema de deshacer: haz clic en la última casilla marcada para desmarcarla');
     console.log('📊 Para debug: window._debugDeshacer');
     console.log('🔄 Para restaurar estado: window.forzarRestauracionLocal()');
+    console.log('🤖 Modo automatico:', isAutoMode ? 'ACTIVADO (sala ' + AUTO_ROOM_CODE + ')' : 'DESACTIVADO');
 }
 
 // ============================================
@@ -233,5 +241,8 @@ export {
     peekMovimiento,
     getUltimoMovimiento,
     getTodosLosMovimientos,
-    contarMovimientos
+    contarMovimientos,
+    // Modo automatico
+    isAutoMode,
+    AUTO_ROOM_CODE
 };
