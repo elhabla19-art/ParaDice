@@ -1,9 +1,9 @@
 :root {
-    --color-celeste: #4fc3f7;
-    --color-lima: #aed581;
-    --color-naranja: #ffb74d;
-    --color-purpura: #ce93d8;
-    --color-rosa: #f06292;
+    --color-celeste: #087CAB;
+    --color-lima: #80BA27;
+    --color-naranja: #E85418;
+    --color-purpura: #78326E;
+    --color-rosa: #E23B8B;
     --bg-main: #121212;
     --bg-panel: #1e1e1e;
     --bg-box: #2d2d2d;
@@ -166,7 +166,7 @@ h1 { font-size: 2rem; font-weight: 800; letter-spacing: 2px; text-transform: upp
 .row.celeste .ficha-indicador { background: #0288d1; }
 .row.lima .ficha-indicador { background: #33691e; }
 .row.naranja .ficha-indicador { background: #e65100; }
-.row.purpura .ficha-indicador { background: #4a148c; }
+.row.purpura .ficha-indicador { background: #8223a8; }
 .row.rosa .ficha-indicador { background: #880e4f; }
 
 @keyframes pulse-ficha {

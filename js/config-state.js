@@ -14,11 +14,11 @@ export const COLORES_ESPANOL = {
 };
 
 export const COLORES_HEX = {
-    celeste: '#4fc3f7',
-    lima: '#aed581',
-    naranja: '#ffb74d',
-    purpura: '#ce93d8',
-    rosa: '#f06292'
+    celeste: '#087CAB',
+    lima: '#80BA27',
+    naranja: '#E85418',
+    purpura: '#78326E',
+    rosa: '#E23B8B'
 };
 
 // Puntajes por carta [número de carta] = puntaje
@@ -36,31 +36,31 @@ export const HABILIDADES = {
         nombre: 'Escoge Fila',
         descripcion: 'Escoge cualquier fila para jugar',
         icono: '🎯',
-        color: '#4fc3f7'
+        color: '#087CAB'
     },
     lima: {
         nombre: 'Carta Especial',
         descripcion: 'Toma una carta del mazo Especial',
         icono: '🃏',
-        color: '#aed581'
+        color: '#80BA27'
     },
     naranja: {
         nombre: 'Cambia Valor',
         descripcion: 'Cambia el valor de un dado al que desees',
         icono: '🎲',
-        color: '#ffb74d'
+        color: '#E85418'
     },
     purpura: {
         nombre: 'Cambia Color',
         descripcion: 'Cambia el color de un dado al que desees',
         icono: '🌈',
-        color: '#ce93d8'
+        color: '#78326E'
     },
     rosa: {
         nombre: 'Escoge Dado',
         descripcion: 'Escoge un dado de cualquier columna',
         icono: '🎯',
-        color: '#f06292'
+        color: '#E23B8B'
     }
 };
 
